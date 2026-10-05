@@ -1,0 +1,85 @@
+# ==============================
+# Python
+# ==============================
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.class
+
+# ==============================
+# Secrets / credentials
+# ==============================
+kaggle.json
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Datasets / downloaded data
+# ==============================
+data/*
+!data/.gitkeep
+
+_*_download/
+*_download/
+*.zip
+
+cataract_balanced/
+
+# ==============================
+# Trained model weights
+# ==============================
+models/
+*.pt
+*.pth
+*.onnx
+
+# ==============================
+# Build / packaging
+# ==============================
+build/
+dist/
+*.spec
+
+# ==============================
+# Generated galleries
+# ==============================
+disagreement_gallery/
+failure_gallery/
+
+# ==============================
+# Temporary / generated outputs
+# ==============================
+*_output.txt
+*_output_v2.txt
+*_final_output.txt
+
+# ==============================
+# Generated images / plots
+# ==============================
+*.png
+*.jpg
+*.jpeg
+
+# Keep important project documentation images if needed later:
+# !docs/images/*.png
+
+# ==============================
+# Backups / temporary files
+# ==============================
+*.bak
+*.tmp
+uploaded_temp.jpg
+
+# ==============================
+# OS / editor
+# ==============================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+cataract_balanced*
+report.pdf
+eval_results.txt

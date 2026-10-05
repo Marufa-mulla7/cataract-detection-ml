@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eye Anomaly Detection — Concept Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07111F;
+    --panel:#0B1B2B;
+    --panel-2:#101F33;
+    --border:#1C2E45;
+    --cyan:#22D3EE;
+    --blue:#3B82F6;
+    --teal:#14B8A6;
+    --purple:#8B5CF6;
+    --green:#22C55E;
+    --amber:#F59E0B;
+    --red:#EF4444;
+    --text:#E7EEF6;
+    --text-dim:#8CA0B6;
+    --text-faint:#5A6E85;
+    --radius:16px;
+  }
+
+  /* Light theme, applied when <body class="light-mode"> is toggled */
+  body.light-mode{
+    --bg:#F3F7FA;
+    --panel:#FFFFFF;
+    --panel-2:#EEF2F6;
+    --border:#D7DEE6;
+    --text:#0B1B2B;
+    --text-dim:#4A5A6B;
+    --text-faint:#7C8CA0;
+  }
+  body.light-mode .vessel-bg{ opacity:0.08; }
+  body.light-mode .concept-banner{ color:#3B1B0E; }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--cyan); color:#07111F;}
+
+  .vessel-bg{
+    position:fixed; inset:0; z-index:0;
+    opacity:0.16;
+    pointer-events:none;
+  }
+  .vessel-bg svg{width:100%; height:100%;}
+  .vessel-path{
+    fill:none;
+    stroke:url(#vesselGradient);
+    stroke-width:1.2;
+    stroke-linecap:round;
+  }
+  .vessel-pulse{
+    fill:none;
+    stroke:var(--cyan);
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-dasharray:6 400;
+    animation:pulseTravel 7s linear infinite;
+    opacity:0.9;
+    filter:drop-shadow(0 0 4px var(--cyan));
+  }
+  .vessel-pulse.p2{ animation-delay:-2.3s; stroke:var(--purple); filter:drop-shadow(0 0 4px var(--purple));}
+  .vessel-pulse.p3{ animation-delay:-4.6s; stroke:var(--teal); filter:drop-shadow(0 0 4px var(--teal));}
+  @keyframes pulseTravel{
+    from{stroke-dashoffset:0;}
+    to{stroke-dashoffset:-2000;}
+  }
+
+  .shell{
+    position:relative; z-index:1;
+    display:flex;
+    min-height:100vh;
+  }
+
+  .sidebar{
+    width:250px; flex-shrink:0;
+    background:rgba(11,27,43,0.7);
+    backdrop-filter:blur(18px);
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column;
+    padding:22px 16px;
+    position:sticky; top:0; height:100vh;
+    transition:transform 0.3s ease;
+  }
+  .logo-row {display:flex; align-items:center; gap:10px; padding:0 8px 22px 8px; border-bottom:1px solid var(--border); margin-bottom:18px;}
+  .logo-mark{width:36px; height:36px; flex-shrink:0;}
+  .logo-text{font-family:'Manrope',sans-serif; font-weight:800; font-size:17px; letter-spacing:0.2px;}
+  .logo-sub{font-size:11px; color:var(--text-dim); margin-top:1px;}
+
+  .nav-group{margin-bottom:6px;}
+  .nav-item{
+    display:flex; align-items:center; gap:12px;
+    padding:11px 12px; border-radius:10px;
+    color:var(--text-dim); font-size:14px; font-weight:500;
+    cursor:pointer; border-left:3px solid transparent;
+    transition:all 0.15s ease;
+    margin-bottom:2px;
+    user-select:none;
+  }
+  .nav-item:hover{background:rgba(34,211,238,0.06); color:var(--text);}
+  .nav-item.active{
+    background:linear-gradient(90deg, rgba(34,211,238,0.16), rgba(59,130,246,0.06));
+    border-left:3px solid var(--cyan);
+    color:#fff;
+    box-shadow:0 0 18px rgba(34,211,238,0.08) inset;
+  }
+
+  .sidebar-footer{margin-top:auto; padding-top:16px; border-top:1px solid var(--border);}
+  .status-row{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-dim); font-family:'JetBrains Mono',monospace;}
+  .status-dot{width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:blink 2s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;} 50%{opacity:0.4;}}
+
+  .hamburger{display:none;}
+
+  .main{flex:1; min-width:0;}
+
+  .topbar{
+    position:sticky; top:0; z-index:50;
+    background:rgba(7,17,31,0.75);
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border);
+    padding:16px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .topbar-left h1{font-family:'Manrope',sans-serif; font-size:19px; font-weight:700;}
+  .breadcrumb{font-size:12px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; margin-top:2px;}
+  .topbar-right{display:flex; align-items:center; gap:16px;}
+  .icon-btn{
+    width:36px; height:36px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--panel-2); border:1px solid var(--border);
+    color:var(--text-dim); cursor:pointer; transition:all 0.15s ease;
+    position:relative;
+  }
+  .icon-btn:hover{border-color:var(--cyan); color:var(--cyan);}
+  .notif-dot{position:absolute; top:6px; right:6px; width:6px; height:6px; border-radius:50%; background:var(--red);}
+  .user-chip{display:flex; align-items:center; gap:10px; padding-left:10px; border-left:1px solid var(--border);}
+  .avatar{width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--cyan),var(--purple)); display:flex; align-items:center; justify-content:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:13px; color:#07111F;}
+  .user-name{font-size:13px; font-weight:600;}
+  .user-role{font-size:11px; color:var(--text-dim);}
+
+  .page{padding:28px; display:none;}
+  .page.active{display:block; animation:fadeIn 0.35s ease;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .placeholder-tag{
+    display:inline-block; font-family:'JetBrains Mono',monospace; font-size:10.5px;
+    color:var(--amber); background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.35);
+    padding:2px 7px; border-radius:6px; letter-spacing:0.3px; margin-left:8px; vertical-align:middle;
+  }
+
+  .hero{
+    display:grid; grid-template-columns:1.1fr 0.9fr; gap:36px;
+    background:linear-gradient(135deg, rgba(34,211,238,0.06), rgba(139,92,246,0.04));
+    border:1px solid var(--border); border-radius:20px;
+    padding:40px; margin-bottom:28px; align-items:center;
+    position:relative; overflow:hidden;
+  }
+  .hero h2{font-family:'Manrope',sans-serif; font-weight:800; font-size:34px; line-height:1.15; margin-bottom:14px;}
+  .hero h2 span{background:linear-gradient(90deg,var(--cyan),var(--blue)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .hero p{color:var(--text-dim); font-size:15px; line-height:1.6; max-width:480px; margin-bottom:24px;}
+  .hero-actions{display:flex; gap:12px;}
+  .btn{
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14px;
+    padding:12px 20px; border-radius:11px; border:1px solid transparent;
+    cursor:pointer; transition:all 0.18s ease; display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn-primary{background:linear-gradient(90deg,var(--cyan),var(--blue)); color:#07111F;}
+  .btn-primary:hover{box-shadow:0 0 22px rgba(34,211,238,0.4); transform:translateY(-1px);}
+  .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text);}
+  .btn-ghost:hover{border-color:var(--cyan); color:var(--cyan);}
+
+  .hero-visual{position:relative; height:280px; display:flex; align-items:center; justify-content:center;}
+  .hero-eye{width:220px; height:220px; border-radius:50%; position:relative;
+    background:radial-gradient(circle at 35% 35%, #12283f, #050d18 70%);
+    box-shadow:0 0 60px rgba(34,211,238,0.15), inset 0 0 40px rgba(0,0,0,0.6);
+    border:1px solid rgba(34,211,238,0.25);
+  }
+  .hero-eye::before{
+    content:""; position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(from 0deg, transparent 0deg, rgba(34,211,238,0.5) 30deg, transparent 60deg);
+    animation:scanRotate 4s linear infinite;
+  }
+  @keyframes scanRotate{ to{transform:rotate(360deg);} }
+  .float-label{
+    position:absolute; background:rgba(11,27,43,0.9); border:1px solid var(--border);
+    border-radius:10px; padding:8px 12px; font-size:11px; font-family:'JetBrains Mono',monospace;
+    color:var(--text-dim); backdrop-filter:blur(8px);
+    box-shadow:0 6px 18px rgba(0,0,0,0.4);
+    animation:floatY 4s ease-in-out infinite;
+  }
+  .float-label b{color:var(--cyan); display:block; font-size:13px; margin-top:2px;}
+  @keyframes floatY{0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);}}
+  .fl-1{top:6%; left:-4%; animation-delay:0s;}
+  .fl-2{bottom:10%; left:-8%; animation-delay:1.2s;}
+  .fl-3{top:14%; right:-6%; animation-delay:0.6s;}
+  .fl-4{bottom:18%; right:-2%; animation-delay:1.8s;}
+
+  .grid{display:grid; gap:18px;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+  .grid-2{grid-template-columns:repeat(2,1fr);}
+
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:20px; position:relative; overflow:hidden;
+  }
+  .card-eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-faint); margin-bottom:6px; font-weight:600;}
+  .card-title{font-family:'Manrope',sans-serif; font-weight:700; font-size:17px; margin-bottom:4px;}
+
+  .section-heading{font-family:'Manrope',sans-serif; font-weight:800; font-size:20px; margin:32px 0 16px 0; display:flex; align-items:center;}
+
+  .upload-card{
+    border:1.5px dashed var(--border); border-radius:20px; padding:48px 24px;
+    text-align:center; background:rgba(255,255,255,0.015);
+    transition:all 0.2s ease; cursor:pointer;
+  }
+  .upload-card:hover, .upload-card.drag{border-color:var(--cyan); background:rgba(34,211,238,0.04);}
+  .upload-icon{width:64px; height:64px; margin:0 auto 16px auto; opacity:0.85;}
+  .upload-card h3{font-family:'Manrope',sans-serif; font-size:19px; margin-bottom:6px;}
+  .upload-card p{color:var(--text-dim); font-size:13.5px; margin-bottom:18px;}
+  .format-row{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); margin-bottom:20px;}
+  .upload-btns{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+
+  .preview-card{display:none; gap:20px; grid-template-columns:220px 1fr;}
+  .preview-img{width:100%; border-radius:14px; border:1px solid var(--border); object-fit:cover; height:220px;}
+  .meta-row{display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-bottom:1px solid var(--border); color:var(--text-dim);}
+  .meta-row b{color:var(--text); font-family:'JetBrains Mono',monospace; font-weight:600;}
+
+  .processing-card{display:none; text-align:center; padding:36px;}
+  .scan-ring{width:120px; height:120px; margin:0 auto 20px auto; position:relative;}
+  .scan-track{stroke:var(--border); stroke-width:6; fill:none;}
+  .scan-fill{stroke:url(#scanGrad); stroke-width:6; fill:none; stroke-linecap:round; transition:stroke-dashoffset 0.3s ease;}
+  .scan-pct{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-weight:600; font-size:20px;}
+  .stage-text{color:var(--cyan); font-family:'JetBrains Mono',monospace; font-size:13px; margin-bottom:4px;}
+  .stage-sub{color:var(--text-dim); font-size:13px;}
+
+  .results-card{display:none;}
+  .severity-badge{display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; font-weight:600; font-size:14px;}
+  .sev-mild{background:rgba(245,158,11,0.12); border:1px solid var(--amber); color:#FBBF56;}
+  .conf-big{font-family:'JetBrains Mono',monospace; font-size:40px; font-weight:600; color:var(--cyan);}
+
+  .detect-card{border-radius:14px; padding:16px; background:var(--panel-2); border:1px solid var(--border);}
+  .detect-top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;}
+  .detect-name{font-weight:600; font-size:14px;}
+  .status-pill{font-size:10.5px; font-family:'JetBrains Mono',monospace; padding:3px 8px; border-radius:6px; font-weight:600;}
+  .pill-detected{background:rgba(245,158,11,0.14); color:var(--amber);}
+  .pill-clear{background:rgba(34,197,94,0.14); color:var(--green);}
+  .bar-track{height:6px; border-radius:99px; background:#1C2E45; overflow:hidden; margin-top:10px;}
+  .bar-fill{height:100%; border-radius:99px;}
+
+  .viewer-pair{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .viewer-col-label{font-size:12.5px; font-weight:600; color:var(--text-dim); margin-bottom:8px; display:flex; align-items:center; gap:6px;}
+  .viewer-col-label.hl{color:var(--cyan);}
+  .viewer-frame{position:relative; border-radius:16px; overflow:hidden; border:1px solid var(--border); height:300px; background:#050b14; display:flex; align-items:center; justify-content:center;}
+  .viewer-frame img{max-width:100%; max-height:100%;}
+  .viewer-controls{position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:flex; gap:6px; background:rgba(7,17,31,0.85); border:1px solid var(--border); border-radius:11px; padding:6px;}
+  .vctrl{width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--text-dim); cursor:pointer; font-size:13px;}
+  .vctrl:hover{background:rgba(34,211,238,0.14); color:var(--cyan);}
+
+  .xai-card{padding:16px 18px;}
+  .xai-bar{height:5px; border-radius:99px; background:#1C2E45; margin-top:8px; overflow:hidden;}
+  .xai-fill{height:100%; border-radius:99px;}
+
+  .stat-card{padding:18px;}
+  .stat-num{font-family:'JetBrains Mono',monospace; font-weight:600; font-size:26px;}
+  .chart-card{padding:20px; height:230px; display:flex; flex-direction:column;}
+  .bars{flex:1; display:flex; align-items:flex-end; gap:10px; padding-top:10px;}
+  .bar{flex:1; border-radius:6px 6px 0 0; background:linear-gradient(180deg,var(--cyan),var(--blue)); position:relative;}
+  .bar span{position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--text-faint); font-family:'JetBrains Mono',monospace;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{text-align:left; color:var(--text-faint); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.4px; padding:10px 12px; border-bottom:1px solid var(--border);}
+  td{padding:12px; border-bottom:1px solid var(--border); color:var(--text-dim);}
+  td.mono{font-family:'JetBrains Mono',monospace; color:var(--text);}
+  .badge{padding:3px 9px; border-radius:99px; font-size:11px; font-weight:600;}
+  .badge-green{background:rgba(34,197,94,0.14); color:var(--green);}
+  .badge-amber{background:rgba(245,158,11,0.14); color:var(--amber);}
+  .badge-red{background:rgba(239,68,68,0.14); color:var(--red);}
+  .link-action{color:var(--cyan); cursor:pointer; font-weight:600; font-size:12px; margin-right:10px;}
+
+  .model-metric{display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border); font-size:13.5px; gap:16px;}
+  .model-metric b{font-family:'JetBrains Mono',monospace; color:var(--cyan); text-align:right;}
+  .model-metric.stack{flex-direction:column; align-items:flex-start; gap:6px;}
+  .model-metric.stack b{text-align:left;}
+
+  .stub-page{padding:60px 20px; text-align:center; color:var(--text-dim);}
+  .stub-page .big-icon{font-size:44px; margin-bottom:14px; opacity:0.6;}
+
+  /* Toasts */
+  .toast-container{position:fixed; bottom:20px; right:20px; z-index:2000; display:flex; flex-direction:column; gap:10px; max-width:360px; width:calc(100% - 40px);}
+  .toast{
+    background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--cyan);
+    border-radius:12px; padding:13px 14px; display:flex; align-items:flex-start; gap:10px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.35); animation:toastIn 0.22s ease; font-size:13px; color:var(--text);
+  }
+  .toast.success{border-left-color:var(--green);}
+  .toast.error{border-left-color:var(--red);}
+  .toast.info{border-left-color:var(--cyan);}
+  .toast-icon{font-size:15px; line-height:1.3; margin-top:1px; flex-shrink:0;}
+  .toast-body{flex:1; line-height:1.5;}
+  .toast-close{cursor:pointer; color:var(--text-faint); font-size:13px; margin-left:4px; flex-shrink:0;}
+  .toast-close:hover{color:var(--text);}
+  .toast.leaving{animation:toastOut 0.18s ease forwards;}
+  @keyframes toastIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+  @keyframes toastOut{to{opacity:0; transform:translateX(24px);}}
+
+  /* Error / retry state */
+  .error-card{display:none; text-align:center; padding:40px 24px; border:1px solid rgba(239,68,68,0.3); border-radius:18px; background:rgba(239,68,68,0.04);}
+  .error-icon{font-size:34px; margin-bottom:10px;}
+  .error-title{font-family:'Manrope',sans-serif; font-weight:700; font-size:16.5px; margin-bottom:8px; color:#F87171;}
+  .error-msg{color:var(--text-dim); font-size:13px; margin-bottom:18px; line-height:1.6; white-space:pre-line; max-width:460px; margin-left:auto; margin-right:auto;}
+  .error-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+
+  .dash-heat-a{width:100%; height:100%; border-radius:50%; background:radial-gradient(circle at 35% 35%, #f2b06a, #c9622d 55%, #1a0d05 100%);}
+  .dash-heat-b{width:100%; height:100%; border-radius:50%; background:radial-gradient(circle at 60% 45%, rgba(239,68,68,0.85), rgba(245,158,11,0.55) 30%, rgba(26,13,5,0.9) 65%);}
+
+  @media (max-width:980px){
+    .grid-4{grid-template-columns:repeat(2,1fr);}
+    .grid-3{grid-template-columns:repeat(2,1fr);}
+    .hero{grid-template-columns:1fr;}
+    .hero-visual{display:none;}
+    .viewer-pair{grid-template-columns:1fr;}
+  }
+  @media (max-width:720px){
+    .sidebar{position:fixed; z-index:150; transform:translateX(-100%); box-shadow:0 0 40px rgba(0,0,0,0.6);}
+    .sidebar.open{transform:translateX(0);}
+    .hamburger{display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:9px; background:var(--panel-2); border:1px solid var(--border); cursor:pointer; margin-right:10px;}
+    .grid-4, .grid-3, .grid-2{grid-template-columns:1fr;}
+    .preview-card{grid-template-columns:1fr;}
+    .user-name,.user-role{display:none;}
+  }
+
+  @media print{
+    .sidebar, .topbar, .vessel-bg, .hamburger{display:none !important;}
+    body, .stApp{background:white !important;}
+    .page{display:none !important; padding:0 !important;}
+    #page-reports{display:block !important;}
+    .card{background:white !important; border:1px solid #ccc !important; box-shadow:none !important; color:#111 !important;}
+    .model-metric{color:#111 !important; border-bottom:1px solid #ddd !important;}
+    .model-metric b{color:#111 !important;}
+    .placeholder-tag{display:none !important;}
+    .btn{display:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="vessel-bg">
+  <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <linearGradient id="vesselGradient" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#22D3EE"/>
+        <stop offset="50%" stop-color="#3B82F6"/>
+        <stop offset="100%" stop-color="#8B5CF6"/>
+      </linearGradient>
+    </defs>
+    <path class="vessel-path" d="M100,400 C250,300 300,250 450,260 C550,265 600,320 700,300 C820,275 880,180 1000,150"/>
+    <path class="vessel-path" d="M100,400 C220,470 260,520 380,540 C480,556 560,520 650,560 C760,606 820,700 950,720"/>
+    <path class="vessel-path" d="M450,260 C470,340 440,400 480,470 C510,522 560,540 600,600"/>
+    <path class="vessel-path" d="M700,300 C740,360 760,420 830,440 C900,460 950,430 1020,470"/>
+    <path class="vessel-path" d="M300,250 C260,180 280,120 220,60"/>
+    <path class="vessel-path" d="M650,560 C700,610 760,630 780,690"/>
+    <path class="vessel-pulse" d="M100,400 C250,300 300,250 450,260 C550,265 600,320 700,300 C820,275 880,180 1000,150"/>
+    <path class="vessel-pulse p2" d="M100,400 C220,470 260,520 380,540 C480,556 560,520 650,560 C760,606 820,700 950,720"/>
+    <path class="vessel-pulse p3" d="M450,260 C470,340 440,400 480,470 C510,522 560,540 600,600"/>
+  </svg>
+</div>
+
+<div class="shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="logo-row">
+      <svg class="logo-mark" viewBox="0 0 40 40" fill="none">
+        <circle cx="20" cy="20" r="18" stroke="#22D3EE" stroke-width="1.5" opacity="0.5"/>
+        <circle cx="20" cy="20" r="9" fill="url(#logoGrad)"/>
+        <path d="M20 2 L20 8 M20 32 L20 38 M2 20 L8 20 M32 20 L38 20" stroke="#3B82F6" stroke-width="1.5"/>
+        <defs><radialGradient id="logoGrad"><stop offset="0%" stop-color="#22D3EE"/><stop offset="100%" stop-color="#3B82F6"/></radialGradient></defs>
+      </svg>
+      <div>
+        <div class="logo-text">Eye Anomaly Detection</div>
+        <div class="logo-sub">Intelligent Eye Anomaly Detection</div>
+      </div>
+    </div>
+
+    <div class="nav-group" id="navGroup">
+      <div class="nav-item active" data-page="dashboard">📊 Dashboard</div>
+      <div class="nav-item" data-page="analyze">🔬 Analyze Image</div>
+      <div class="nav-item" data-page="analyze">📤 Upload Scan</div>
+      <div class="nav-item" data-page="history">🕘 Session History<span id="historyCount" style="margin-left:auto; font-size:10px; background:rgba(34,211,238,0.16); color:var(--cyan); padding:2px 7px; border-radius:99px; display:none;"></span></div>
+      <div class="nav-item" data-page="analytics">📈 Analytics</div>
+      <div class="nav-item" data-page="model">🧠 AI Model</div>
+      <div class="nav-item" data-page="reports">📄 Reports</div>
+      <div class="nav-item" data-page="settings">⚙️ Settings</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-row"><span class="status-dot"></span> AI SYSTEM STATUS: ONLINE</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex; align-items:center;">
+        <div class="hamburger" id="hamburger">☰</div>
+        <div class="topbar-left">
+          <h1 id="pageTitle">Eye Anomaly Detection</h1>
+          <div class="breadcrumb" id="crumb">Dashboard / Overview</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="icon-btn" onclick="showHelp()">❓</div>
+        <div class="icon-btn" onclick="toggleTheme()">🌓</div>
+        <div class="user-chip">
+          <div class="avatar">SC</div>
+          <div>
+            <div class="user-name">SheCodes</div>
+            <div class="user-role">Student Researcher</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="page active" id="page-dashboard">
+      <div class="hero">
+        <div>
+          <h2>AI-Powered <span>Eye Anomaly Detection</span></h2>
+          <p>Upload a retinal or ocular image and let the computer-vision model analyze visual patterns, detect abnormalities, and generate an interpretable screening report.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="goTo('analyze')">+ Upload Eye Image</button>
+            <button class="btn btn-ghost" onclick="goTo('analytics')">View Analytics</button>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="hero-eye"></div>
+          <div class="float-label fl-1">Retinal Vessel Analysis<b>Active</b></div>
+          <div class="float-label fl-2">AI Confidence<b>96.8%</b></div>
+          <div class="float-label fl-3">Lesion Detection<b>Scanning…</b></div>
+          <div class="float-label fl-4">Image Quality<b>Excellent</b></div>
+        </div>
+      </div>
+
+      <div class="section-heading">Overview<span class="placeholder-tag">EXAMPLE DATA</span></div>
+      <div class="grid grid-4">
+        <div class="card stat-card"><div class="card-eyebrow">Total Scans</div><div class="stat-num">1,284</div></div>
+        <div class="card stat-card"><div class="card-eyebrow">Normal</div><div class="stat-num" style="color:var(--green)">946</div></div>
+        <div class="card stat-card"><div class="card-eyebrow">Abnormal</div><div class="stat-num" style="color:var(--amber)">302</div></div>
+        <div class="card stat-card"><div class="card-eyebrow">High Risk</div><div class="stat-num" style="color:var(--red)">36</div></div>
+      </div>
+
+      <div class="section-heading">Image Analysis Preview<span class="placeholder-tag">EXAMPLE DATA</span></div>
+      <div class="card">
+        <div class="viewer-pair">
+          <div>
+            <div class="viewer-col-label">🖼️ Original</div>
+            <div class="viewer-frame" style="height:220px;">
+              <div class="dash-heat-a" style="width:180px; height:180px;"></div>
+            </div>
+          </div>
+          <div>
+            <div class="viewer-col-label hl">🔥 Grad-CAM Heatmap</div>
+            <div class="viewer-frame" style="height:220px;">
+              <div class="dash-heat-b" style="width:180px; height:180px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-heading">Recent AI Analyses<span class="placeholder-tag">EXAMPLE DATA</span></div>
+      <div class="card" style="overflow-x:auto;">
+        <table>
+          <tr><th>Scan ID</th><th>Type</th><th>Date</th><th>Result</th><th>Confidence</th><th>Risk</th><th>Status</th><th>Action</th></tr>
+          <tr><td class="mono">SCN-2291</td><td>Fundus</td><td>2026-08-24</td><td>Diabetic Retinopathy</td><td class="mono">92.4%</td><td><span class="badge badge-amber">Moderate</span></td><td><span class="badge badge-green">Reviewed</span></td><td><span class="link-action">View</span><span class="link-action">Report</span></td></tr>
+          <tr><td class="mono">SCN-2290</td><td>Fundus</td><td>2026-08-24</td><td>Normal</td><td class="mono">98.1%</td><td><span class="badge badge-green">Low</span></td><td><span class="badge badge-green">Reviewed</span></td><td><span class="link-action">View</span><span class="link-action">Report</span></td></tr>
+          <tr><td class="mono">SCN-2289</td><td>OCT</td><td>2026-08-23</td><td>Glaucoma Risk</td><td class="mono">88.7%</td><td><span class="badge badge-red">High</span></td><td><span class="badge badge-amber">Pending</span></td><td><span class="link-action">View</span><span class="link-action">Report</span></td></tr>
+          <tr><td class="mono">SCN-2288</td><td>Fundus</td><td>2026-08-23</td><td>Cataract Indicators</td><td class="mono">90.2%</td><td><span class="badge badge-amber">Moderate</span></td><td><span class="badge badge-green">Reviewed</span></td><td><span class="link-action">View</span><span class="link-action">Report</span></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section class="page" id="page-analyze">
+      <div class="section-heading">Upload Eye Image</div>
+      <div class="card">
+        <div class="upload-card" id="dropzone">
+          <svg class="upload-icon" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="#22D3EE" stroke-width="1.5" opacity="0.5"/><path d="M32 20v20M22 30l10-10 10 10" stroke="#22D3EE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 42h24" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/></svg>
+          <h3>Drag &amp; drop a retinal, fundus, OCT, or ocular image</h3>
+          <p>or use one of the options below</p>
+          <div class="format-row">JPG • JPEG • PNG • TIFF</div>
+          <div class="upload-btns">
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+            <button class="btn btn-ghost">Take Photo</button>
+            <button class="btn btn-ghost" onclick="useSample()">Use Sample Image</button>
+          </div>
+          <input type="file" id="fileInput" accept="image/*" style="display:none">
+        </div>
+
+        <div class="preview-card grid" id="previewCard">
+          <img id="previewImg" class="preview-img" src="">
+          <div>
+            <div class="meta-row"><span>Filename</span><b id="metaName">—</b></div>
+            <div class="meta-row"><span>Resolution</span><b id="metaRes">1024 × 1024</b></div>
+            <div class="meta-row"><span>File size</span><b id="metaSize">—</b></div>
+            <div class="meta-row"><span>Image quality</span><b style="color:var(--green)">Excellent</b></div>
+            <div style="margin-top:18px; display:flex; gap:10px;">
+              <button class="btn btn-primary" onclick="startAnalysis()">Analyze Image</button>
+              <button class="btn btn-ghost" onclick="resetUpload()">Remove Image</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="processing-card" id="processingCard">
+          <div class="scan-ring">
+            <svg width="120" height="120">
+              <defs><linearGradient id="scanGrad"><stop offset="0%" stop-color="#22D3EE"/><stop offset="100%" stop-color="#8B5CF6"/></linearGradient></defs>
+              <circle class="scan-track" cx="60" cy="60" r="52"/>
+              <circle class="scan-fill" id="scanFill" cx="60" cy="60" r="52" stroke-dasharray="327" stroke-dashoffset="327"/>
+            </svg>
+            <div class="scan-pct" id="scanPct">0%</div>
+          </div>
+          <div class="stage-text" id="stageText">Initializing…</div>
+          <div class="stage-sub">AI Analysis in Progress — please don't close this tab</div>
+        </div>
+
+        <div class="error-card" id="errorCard">
+          <div class="error-icon">⚠️</div>
+          <div class="error-title">Analysis Failed</div>
+          <div class="error-msg" id="errorMsg">Something went wrong while analyzing this image.</div>
+          <div class="error-actions">
+            <button class="btn btn-primary" onclick="retryAnalysis()">Try Again</button>
+            <button class="btn btn-ghost" onclick="resetUpload()">Choose Different Image</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="resultsBlock" class="results-card">
+        <div class="section-heading">AI Detection Result</div>
+        <div class="card grid-2 grid" style="align-items:center;">
+          <div>
+            <div class="card-eyebrow">Primary Finding</div>
+            <div class="card-title" id="primaryFindingText" style="font-size:22px; margin:6px 0 12px 0;">—</div>
+            <span class="severity-badge sev-mild" id="severityBadge">—</span>
+            <p style="margin-top:16px; color:var(--text-dim); font-size:13.5px; line-height:1.6;">
+              <b style="color:var(--text)">AI-assisted screening result — requires professional clinical review.</b> This output is not a definitive medical diagnosis.
+            </p>
+          </div>
+          <div style="text-align:center;">
+            <div class="card-eyebrow">AI Confidence</div>
+            <div class="conf-big" id="confBigText">—</div>
+          </div>
+        </div>
+
+        <div class="section-heading">Class Probability Distribution</div>
+        <div class="grid grid-3" id="detectGrid"></div>
+
+        <div class="section-heading">Second Opinion — Cross-Model Check</div>
+        <div class="card">
+          <p style="color:var(--text-dim); font-size:13px; margin-bottom:14px;">Every prediction is independently cross-checked by a second, separately-trained architecture (EfficientNet-B0). On the real test set, the two models agree 96.4% of the time (98.0% accuracy on agreed cases); when they disagree (3.6% of cases), ResNet50 is right 64.7% of the time vs. EfficientNet-B0 at 29.4%.</p>
+          <div class="grid grid-3">
+            <div class="detect-card">
+              <div class="card-eyebrow">Primary Model (ResNet50)</div>
+              <div class="card-title" id="effnetResultName" style="font-size:16px; margin-top:6px;">—</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-dim); margin-top:4px;" id="effnetResultConf">—</div>
+            </div>
+            <div class="detect-card">
+              <div class="card-eyebrow">Second Opinion (EfficientNet-B0)</div>
+              <div class="card-title" id="resnetResultName" style="font-size:16px; margin-top:6px;">—</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-dim); margin-top:4px;" id="resnetResultConf">—</div>
+            </div>
+            <div class="detect-card" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <div class="card-eyebrow">Agreement</div>
+              <div id="agreementBadge" style="margin-top:8px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-heading">Image Analysis Viewer</div>
+        <div class="card">
+          <div class="viewer-pair">
+            <div>
+              <div class="viewer-col-label">🖼️ Original</div>
+              <div class="viewer-frame">
+                <img id="viewerImgOriginal" src="">
+              </div>
+            </div>
+            <div>
+              <div class="viewer-col-label hl">🔥 Grad-CAM Heatmap</div>
+              <div class="viewer-frame">
+                <img id="viewerImgHeatmap" src="">
+                <div class="viewer-controls">
+                  <div class="vctrl">➕</div><div class="vctrl">➖</div><div class="vctrl">⟳</div><div class="vctrl">⛶</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-heading">Why did the AI flag this image?</div>
+        <div class="card">
+          <p style="color:var(--text-dim); font-size:13.5px; line-height:1.6;">
+            The heatmap above is generated by <b style="color:var(--text)">Grad-CAM</b> (Gradient-weighted Class Activation Mapping), computed directly from the model that produced this prediction —
+            <span style="color:#EF4444; font-weight:600;">red/orange</span> regions had the strongest influence on the model's decision,
+            <span style="color:#3B82F6; font-weight:600;">blue/dark</span> regions had minimal influence. This is a real, per-image explanation, not a fixed illustration.
+          </p>
+        </div>
+
+        <div style="margin-top:24px; text-align:center;">
+          <button class="btn btn-primary" onclick="goTo('reports')">Generate Clinical Report</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-history">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:0 0 4px 0;">
+        <div class="section-heading" style="margin:0;">Session History<span class="placeholder-tag" style="color:var(--cyan); border-color:var(--cyan); background:rgba(34,211,238,0.08);">THIS SESSION ONLY</span></div>
+        <button class="btn btn-ghost" id="clearHistoryBtn" style="display:none;" onclick="clearSessionHistory()">Clear History</button>
+      </div>
+
+      <div class="card" id="historyEmptyState">
+        <div class="stub-page" style="padding:36px 20px;">
+          <div class="big-icon">🕘</div>
+          <h3>No analyses yet</h3>
+          <p style="max-width:420px; margin-left:auto; margin-right:auto;">Images you analyze in this browser tab will show up here, so you can review or compare them without re-uploading. This list isn't saved anywhere — it clears when you close or reload the page.</p>
+          <button class="btn btn-primary" style="margin-top:16px;" onclick="goTo('analyze')">Analyze an Image</button>
+        </div>
+      </div>
+
+      <div id="historyContent" style="display:none;">
+        <p style="color:var(--text-dim); font-size:12.5px; margin-bottom:16px;">Select up to two analyses below to compare them side by side.</p>
+        <div class="grid grid-3" id="historyGrid"></div>
+
+        <div id="historyCompareBlock" style="display:none;">
+          <div class="section-heading">Comparison</div>
+          <div class="grid grid-2" id="historyCompareGrid"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-analytics">
+      <div class="section-heading">Analytics<span class="placeholder-tag">EXAMPLE DATA</span></div>
+      <div class="grid grid-4">
+        <div class="card stat-card"><div class="card-eyebrow">Avg. Confidence</div><div class="stat-num" style="color:var(--cyan)">94.2%</div></div>
+        <div class="card stat-card"><div class="card-eyebrow">Model Accuracy</div><div class="stat-num" style="color:var(--purple)">96.2%</div></div>
+        <div class="card stat-card"><div class="card-eyebrow">Avg. Processing Time</div><div class="stat-num">2.4s</div></div>
+        <div class="card stat-card"><div class="card-eyebrow">Scans This Week</div><div class="stat-num">187</div></div>
+      </div>
+      <div class="grid grid-2" style="margin-top:18px;">
+        <div class="card chart-card">
+          <div class="card-eyebrow">Weekly Analysis Volume</div>
+          <div class="bars">
+            <div class="bar" style="height:40%;"><span>Mon</span></div>
+            <div class="bar" style="height:65%;"><span>Tue</span></div>
+            <div class="bar" style="height:50%;"><span>Wed</span></div>
+            <div class="bar" style="height:80%;"><span>Thu</span></div>
+            <div class="bar" style="height:60%;"><span>Fri</span></div>
+            <div class="bar" style="height:35%;"><span>Sat</span></div>
+            <div class="bar" style="height:25%;"><span>Sun</span></div>
+          </div>
+        </div>
+        <div class="card chart-card">
+          <div class="card-eyebrow">Anomaly Distribution</div>
+          <div class="bars">
+            <div class="bar" style="height:70%; background:linear-gradient(180deg,var(--purple),var(--blue));"><span>DR</span></div>
+            <div class="bar" style="height:45%; background:linear-gradient(180deg,var(--purple),var(--blue));"><span>Glau</span></div>
+            <div class="bar" style="height:55%; background:linear-gradient(180deg,var(--purple),var(--blue));"><span>Cat</span></div>
+            <div class="bar" style="height:30%; background:linear-gradient(180deg,var(--purple),var(--blue));"><span>AMD</span></div>
+            <div class="bar" style="height:20%; background:linear-gradient(180deg,var(--purple),var(--blue));"><span>Other</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-model">
+      <div class="section-heading">Model Card<span class="placeholder-tag" style="color:var(--green); border-color:var(--green); background:rgba(34,197,94,0.1);">REAL EVALUATION RESULTS</span></div>
+
+      <div class="card">
+        <div class="card-eyebrow">Intended Use</div>
+        <p style="color:var(--text-dim); font-size:13.5px; line-height:1.65; margin-top:6px;">
+          Screens <b style="color:var(--text)">fundus (retinal) photographs</b> for five conditions — Normal, Cataract, Glaucoma, Age-related Macular Degeneration (AMD), and Diabetic Retinopathy — and pairs each prediction with Grad-CAM explainability, Monte Carlo Dropout uncertainty, and a cross-model second-opinion check.
+          <b style="color:var(--text)">This is a student academic research project, not a certified medical diagnostic device.</b> It has not undergone regulatory review or prospective clinical validation, and has not been tested on real hospital equipment.
+        </p>
+        <p style="color:var(--text-faint); font-size:12.5px; line-height:1.6; margin-top:10px;">
+          Out of scope: external/anterior eye photographs. Of the five conditions above, only Cataract has any visible external signature — Glaucoma, Diabetic Retinopathy, and AMD are retinal/optic-nerve conditions that cannot be diagnosed from a non-fundus photo under any circumstances.
+        </p>
+      </div>
+
+      <div class="section-heading" style="margin-top:28px;">Training Data</div>
+      <div class="card" style="overflow-x:auto;">
+        <table>
+          <tr><th>Class</th><th>Images</th><th>Source</th></tr>
+          <tr><td>Normal</td><td class="mono">300</td><td>Cataract Dataset (jr2ngb/cataractdataset)</td></tr>
+          <tr><td>Cataract</td><td class="mono">382</td><td>Cataract Dataset + ODIR-5K boost</td></tr>
+          <tr><td>Glaucoma</td><td class="mono">340</td><td>Cataract Dataset + ODIR-5K boost</td></tr>
+          <tr><td>AMD</td><td class="mono">300</td><td>RFMiD (100 real + 200 synthetic augmented)</td></tr>
+          <tr><td>Diabetic Retinopathy</td><td class="mono">1,857</td><td>APTOS 2019</td></tr>
+        </table>
+        <p style="color:var(--text-dim); font-size:12.5px; margin-top:14px;">
+          <b style="color:var(--text)">3,479 images total</b>, split 70/15/15 into train / validation / test (2,227 / 476 / 476). All test-set figures below are computed on the 476 held-out test images.
+        </p>
+        <p style="color:var(--amber); font-size:12px; margin-top:8px; line-height:1.5;">
+          ⚠ Honest caveat: 200 of AMD's 300 training images are synthetic augmented duplicates of only 100 real source photos, and Diabetic Retinopathy makes up 53% of the full dataset. Both facts affect how the per-class results below should be read — see Known Limitations.
+        </p>
+      </div>
+
+      <div class="section-heading" style="margin-top:28px;">Model Performance</div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-eyebrow">Primary Model</div>
+          <div class="card-title" style="font-size:18px;">ResNet50</div>
+          <div class="model-metric"><span>Validation Accuracy</span><b>96.01%</b></div>
+          <div class="model-metric"><span>Test Accuracy</span><b>97%</b></div>
+          <div class="model-metric"><span>Macro F1</span><b>0.94</b></div>
+          <div class="model-metric"><span>Epochs</span><b>20 (no early stop)</b></div>
+          <div class="model-metric" style="border-bottom:none;"><span>Training Time</span><b>337.5 min</b></div>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Second-Opinion Model</div>
+          <div class="card-title" style="font-size:18px;">EfficientNet-B0</div>
+          <div class="model-metric"><span>Validation Accuracy</span><b>94.33%</b></div>
+          <div class="model-metric"><span>Test Accuracy</span><b>96%</b></div>
+          <div class="model-metric"><span>Macro F1</span><b>0.92</b></div>
+          <div class="model-metric"><span>Epochs</span><b>10 (early stopped)</b></div>
+          <div class="model-metric" style="border-bottom:none;"><span>Training Time</span><b>123.3 min</b></div>
+        </div>
+      </div>
+      <p style="color:var(--text-dim); font-size:12.5px; margin-top:10px; line-height:1.6;">
+        ResNet50 became primary after a data-augmentation pipeline bug was found and fixed mid-project — the architecture ranking flipped from the pre-fix result (EfficientNet-B0 had led, at 97% vs 95% test accuracy). Both models were retrained after the fix.
+      </p>
+
+      <div class="section-heading" style="margin-top:28px;">Per-Class F1 Score</div>
+      <div class="card" style="overflow-x:auto;">
+        <table>
+          <tr><th>Class</th><th>EfficientNet-B0</th><th>ResNet50 (primary)</th></tr>
+          <tr><td>Normal</td><td class="mono">0.89</td><td class="mono">0.88</td></tr>
+          <tr><td>Cataract</td><td class="mono">0.90</td><td class="mono">0.92</td></tr>
+          <tr><td>Glaucoma</td><td class="mono">0.84</td><td class="mono">0.89</td></tr>
+          <tr><td>AMD</td><td class="mono">0.99</td><td class="mono">0.99</td></tr>
+          <tr><td>Diabetic Retinopathy</td><td class="mono">0.99</td><td class="mono">1.00</td></tr>
+        </table>
+      </div>
+
+      <div class="section-heading" style="margin-top:28px;">Failure Case Breakdown <span style="font-size:12px; color:var(--text-faint); font-weight:500; margin-left:8px;">— ResNet50, 15 / 476 test images misclassified (3.2%)</span></div>
+      <div class="card" style="overflow-x:auto;">
+        <table>
+          <tr><th>True Class</th><th>Errors</th><th>Total</th><th>Error Rate</th></tr>
+          <tr><td>Normal</td><td class="mono">2</td><td class="mono">46</td><td><span class="badge badge-amber">4.3%</span></td></tr>
+          <tr><td>Cataract</td><td class="mono">5</td><td class="mono">52</td><td><span class="badge badge-amber">9.6%</span></td></tr>
+          <tr><td>Glaucoma</td><td class="mono">8</td><td class="mono">44</td><td><span class="badge badge-red">18.2%</span></td></tr>
+          <tr><td>AMD</td><td class="mono">0</td><td class="mono">42</td><td><span class="badge badge-green">0%</span></td></tr>
+          <tr><td>Diabetic Retinopathy</td><td class="mono">0</td><td class="mono">292</td><td><span class="badge badge-green">0%</span></td></tr>
+        </table>
+        <p style="color:var(--text-dim); font-size:12.5px; margin-top:14px; line-height:1.6;">
+          Every misclassification falls within the Normal / Cataract / Glaucoma trio — three visually-overlapping conditions. AMD and Diabetic Retinopathy have zero test-set errors.
+        </p>
+      </div>
+
+      <div class="section-heading" style="margin-top:28px;">Second-Opinion Agreement</div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-eyebrow">Agreement on 476 test images</div>
+          <div class="model-metric"><span>Models agree</span><b>459 / 476 (96.4%)</b></div>
+          <div class="model-metric"><span>Accuracy when agree</span><b style="color:var(--green)">98.04%</b></div>
+          <div class="model-metric"><span>Models disagree</span><b>17 / 476 (3.6%)</b></div>
+          <div class="model-metric"><span>Primary accuracy when disagree</span><b style="color:var(--amber)">64.71%</b></div>
+          <div class="model-metric" style="border-bottom:none;"><span>Second-opinion accuracy when disagree</span><b style="color:var(--red)">29.41%</b></div>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Cost-Weighted Evaluation</div>
+          <p style="color:var(--text-dim); font-size:12px; margin:6px 0 10px 0; line-height:1.5;">Re-scores primary-model errors with an asymmetric cost: missed disease = 10, disease-confused-with-disease = 5, false alarm = 1.</p>
+          <div class="model-metric"><span>Plain accuracy</span><b>96.8% (461/476)</b></div>
+          <div class="model-metric"><span>Cost-weighted score</span><b>0.9754</b></div>
+          <div class="model-metric"><span>Missed disease (disease → Normal)</span><b style="color:var(--red)">10 cases</b></div>
+          <div class="model-metric" style="border-bottom:none;"><span>False alarm (Normal → disease)</span><b>2 cases</b></div>
+        </div>
+      </div>
+      <p style="color:var(--text-dim); font-size:12.5px; margin-top:10px; line-height:1.6;">
+        The cost-weighted score sits close to plain accuracy, but <b style="color:var(--text)">10 of the model's 15 total test-set errors (67%) are missed-disease cases</b> — the most clinically dangerous outcome, where a diseased eye is called Normal. When two independently-trained models disagree, treat the result with extra caution; that's why disagreement is surfaced in every real analysis result.
+      </p>
+
+      <div class="section-heading" style="margin-top:28px;">Known Limitations</div>
+      <div class="card">
+        <ol style="color:var(--text-dim); font-size:13px; line-height:1.9; padding-left:20px;">
+          <li><b style="color:var(--text)">AMD's training data is 67% synthetic</b> (200 of 300 images are augmented duplicates of only 100 real photos) — its near-perfect F1 may partly reflect recognizing "known source image, transformed" rather than fully generalizable AMD features.</li>
+          <li><b style="color:var(--text)">Diabetic Retinopathy dominates the dataset</b> (53% of all images), which partly explains its near-perfect scores independent of genuine per-class discriminative power.</li>
+          <li><b style="color:var(--text)">No validation on real hospital-sourced images.</b> The model hasn't been tested on images from different cameras, lighting, or patient populations than its Kaggle training sources.</li>
+          <li><b style="color:var(--text)">Small per-bin sample sizes</b> in calibration analysis limit statistical confidence for Normal, Cataract, and Glaucoma specifically.</li>
+          <li><b style="color:var(--text)">External eye photographs are out of scope.</b> Only fundus (retinal) images are analyzed — external cataract clouding, conjunctivitis, etc. are not detected.</li>
+          <li><b style="color:var(--text)">Grad-CAM is CNN-specific</b> and would not directly apply if a Vision Transformer were added in future work.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="page" id="page-reports">
+      <div class="section-heading">Clinical Report<span class="placeholder-tag" id="reportsDataTag">EXAMPLE DATA</span></div>
+      <div class="card" style="max-width:640px;">
+        <div class="card-eyebrow">Scan Information</div>
+        <div class="model-metric"><span>Scan ID</span><b id="repScanId">SCN-2291</b></div>
+        <div class="model-metric"><span>Image Quality</span><b id="repQuality">Excellent</b></div>
+        <div class="model-metric"><span>AI Finding</span><b id="repFinding">Diabetic Retinopathy</b></div>
+        <div class="model-metric"><span>Confidence</span><b id="repConfidence">92.4%</b></div>
+        <div class="model-metric"><span>Risk Assessment</span><b id="repRisk" style="color:var(--amber)">Moderate</b></div>
+        <div class="model-metric stack" style="border-bottom:none;"><span>Recommendation</span><b id="repRecommendation">Clinical review advised</b></div>
+        <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="downloadPdfBtn" onclick="downloadReport(event)">Download PDF</button>
+          <button class="btn btn-ghost" onclick="window.print()">Print Report</button>
+          <button class="btn btn-ghost" onclick="shareReport()">Share Report</button>
+        </div>
+        <p id="repNote" style="margin-top:14px; font-size:12px; color:var(--text-dim); line-height:1.5;"></p>
+      </div>
+    </section>
+
+    <section class="page" id="page-settings">
+      <div class="stub-page"><div class="big-icon">⚙️</div><h3>Settings</h3><p>Theme, notification, and account preferences would live here.</p></div>
+    </section>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  function downloadReport(evt){
+    // If a real analysis has been run, generate a real PDF via the backend
+    // (embeds the actual original image + Grad-CAM heatmap + model output).
+    // Otherwise fall back to the browser print dialog for the example data.
+    if(!window.__lastResult || !window.__lastOriginalFile){
+      showToast('No real analysis yet — opening the print dialog for the example report.', 'info');
+      window.print();
+      return;
+    }
+
+    const btn = evt ? evt.target : document.getElementById('downloadPdfBtn');
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Generating PDF…';
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('original_image', window.__lastOriginalFile);
+    formData.append('report_data', JSON.stringify(window.__lastResult));
+
+    fetch('/generate_report', { method:'POST', body: formData })
+      .then(r=>{
+        if(!r.ok) throw new Error('Server error: '+r.status);
+        return r.blob();
+      })
+      .then(blob=>{
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `eye-anomaly-report-${window.__lastResult.scan_id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Report downloaded.', 'success');
+      })
+      .catch(err=>{
+        showToast('Report generation failed: ' + err.message, 'error');
+      })
+      .finally(()=>{
+        btn.textContent = originalLabel;
+        btn.disabled = false;
+      });
+  }
+
+  function shareReport(){
+    let reportText;
+    if(window.__lastResult){
+      const d = window.__lastResult;
+      reportText = `Eye Anomaly Detection - Clinical Report\nScan ID: ${d.scan_id}\nAI Finding: ${d.predicted_class}\nConfidence: ${d.confidence_pct}%\nSecond Opinion: ${d.second_opinion_predicted_class} (${d.second_opinion_confidence_pct}%)\nModels Agree: ${d.models_agree ? 'Yes' : 'No'}\nRecommendation: Clinical review by a qualified eye-care professional is advised.`;
+    } else {
+      reportText = 'Eye Anomaly Detection - Clinical Report\nScan ID: SCN-2291\nAI Finding: Diabetic Retinopathy\nConfidence: 92.4%\nRisk Assessment: Moderate\nRecommendation: Clinical review advised';
+    }
+    if(navigator.share){
+      navigator.share({ title: 'Eye Anomaly Detection Report', text: reportText }).catch(()=>{});
+    } else if(navigator.clipboard){
+      navigator.clipboard.writeText(reportText).then(()=>{
+        showToast('Report summary copied to clipboard.', 'success');
+      }).catch(()=>{
+        showTextModal('Report Summary', reportText);
+      });
+    } else {
+      showTextModal('Report Summary', reportText);
+    }
+  }
+
+  function toggleTheme(){
+    document.body.classList.toggle('light-mode');
+  }
+
+  // ---------- Toast notifications ----------
+  function showToast(message, type='info', duration=4500){
+    const container = document.getElementById('toastContainer');
+    const icons = {success:'✅', error:'⚠️', info:'ℹ️'};
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    const iconEl = document.createElement('div');
+    iconEl.className = 'toast-icon';
+    iconEl.textContent = icons[type] || icons.info;
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'toast-body';
+    bodyEl.textContent = message;
+    const closeEl = document.createElement('div');
+    closeEl.className = 'toast-close';
+    closeEl.textContent = '✕';
+    closeEl.onclick = () => dismissToast(toast);
+    toast.appendChild(iconEl);
+    toast.appendChild(bodyEl);
+    toast.appendChild(closeEl);
+    container.appendChild(toast);
+    const timer = setTimeout(() => dismissToast(toast), duration);
+    toast.dataset.timer = timer;
+  }
+  function dismissToast(toast){
+    if(!toast.isConnected) return;
+    clearTimeout(toast.dataset.timer);
+    toast.classList.add('leaving');
+    setTimeout(() => toast.remove(), 180);
+  }
+
+  // ---------- Fallback "copy this text" modal (used when clipboard/share APIs are unavailable) ----------
+  function showTextModal(title, text){
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999; display:flex; align-items:center; justify-content:center;';
+    overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--panel); border:1px solid var(--border); border-radius:16px; max-width:480px; width:90%; padding:24px; box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+    box.innerHTML = `<h2 style="font-family:'Manrope',sans-serif; font-size:18px; margin-bottom:12px;">${title}</h2>
+      <p style="color:var(--text-dim); font-size:12.5px; margin-bottom:10px;">Sharing isn't available in this browser — select and copy the text below manually.</p>
+      <textarea readonly style="width:100%; height:140px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:12px; padding:10px; resize:none;"></textarea>`;
+    const textarea = box.querySelector('textarea');
+    textarea.value = text;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn btn-primary';
+    closeBtn.style.cssText = 'margin-top:14px; width:100%;';
+    closeBtn.textContent = 'Close';
+    closeBtn.onclick = () => overlay.remove();
+    box.appendChild(closeBtn);
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    textarea.focus();
+    textarea.select();
+  }
+
+  // ---------- Analyze-page error state ----------
+  function showErrorCard(message){
+    document.getElementById('errorMsg').textContent = message;
+    document.getElementById('errorCard').style.display = 'block';
+  }
+  function hideErrorCard(){
+    document.getElementById('errorCard').style.display = 'none';
+  }
+  function retryAnalysis(){
+    hideErrorCard();
+    startAnalysis();
+  }
+
+  function showHelp(){
+    const existing = document.getElementById('helpModalOverlay');
+    if(existing){ existing.remove(); return; }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'helpModalOverlay';
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999; display:flex; align-items:center; justify-content:center;';
+    overlay.onclick = (e)=>{ if(e.target === overlay) overlay.remove(); };
+
+    overlay.innerHTML = `
+      <div style="background:var(--panel); border:1px solid var(--border); border-radius:16px; max-width:520px; width:90%; padding:28px; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+        <h2 style="font-family:'Manrope',sans-serif; font-size:20px; margin-bottom:14px;">How to use this app</h2>
+        <div style="color:var(--text-dim); font-size:14px; line-height:1.7;">
+          <p style="margin-bottom:10px;"><b style="color:var(--text);">1. Analyze Image</b> — upload a fundus (retinal) photo. Only fundus photos are supported; external eye photos will not give meaningful results.</p>
+          <p style="margin-bottom:10px;"><b style="color:var(--text);">2. Real detection</b> — every analysis runs your actual trained ResNet50 model (primary) and EfficientNet-B0 (second opinion) — nothing here is simulated.</p>
+          <p style="margin-bottom:10px;"><b style="color:var(--text);">3. Second Opinion</b> — if the two models disagree, treat that result with extra caution; disagreement cases have a much higher real error rate than cases where they agree.</p>
+          <p style="margin-bottom:10px;"><b style="color:var(--text);">4. Not a diagnosis</b> — every result is an AI-assisted screening signal only, and requires review by a qualified eye-care professional.</p>
+          <p><b style="color:var(--text);">AI Model</b> shows real evaluation results from the actual trained models. <b style="color:var(--text);">Dashboard / Analytics</b> still show illustrative example data, separate from the real Analyze page.</p>
+        </div>
+        <button onclick="document.getElementById('helpModalOverlay').remove()" class="btn btn-primary" style="margin-top:20px; width:100%;">Got it</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  const navItems = document.querySelectorAll('.nav-item');
+  const pages = document.querySelectorAll('.page');
+  const titles = {
+    dashboard:['Dashboard','Dashboard / Overview'],
+    analyze:['Analyze Image','Dashboard / AI Analysis'],
+    history:['Session History','Dashboard / Session History'],
+    analytics:['Analytics','Dashboard / Analytics'],
+    model:['AI Model','Dashboard / Model Card'],
+    reports:['Reports','Dashboard / Reports'],
+    settings:['Settings','Dashboard / Settings'],
+  };
+  function goTo(key){
+    navItems.forEach(n=>n.classList.toggle('active', n.dataset.page===key));
+    pages.forEach(p=>p.classList.toggle('active', p.id==='page-'+key));
+    document.getElementById('pageTitle').textContent = titles[key][0];
+    document.getElementById('crumb').textContent = titles[key][1];
+    document.getElementById('sidebar').classList.remove('open');
+    if(key === 'reports') populateReportsPage();
+    if(key === 'history') renderHistoryPage();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function populateReportsPage(){
+    const tag = document.getElementById('reportsDataTag');
+    const note = document.getElementById('repNote');
+    if(window.__lastResult){
+      const d = window.__lastResult;
+      tag.textContent = 'FROM YOUR LAST ANALYSIS';
+      tag.style.color = 'var(--green)';
+      tag.style.borderColor = 'var(--green)';
+      tag.style.background = 'rgba(34,197,94,0.1)';
+
+      document.getElementById('repScanId').textContent = d.scan_id;
+      document.getElementById('repQuality').textContent = 'Not separately assessed';
+      document.getElementById('repFinding').textContent = d.predicted_class;
+      document.getElementById('repConfidence').textContent = d.confidence_pct + '%';
+
+      const riskEl = document.getElementById('repRisk');
+      if(d.predicted_class.toLowerCase() === 'normal' && !d.is_uncertain){
+        riskEl.textContent = 'Low'; riskEl.style.color = 'var(--green)';
+      } else if(d.is_uncertain || !d.models_agree){
+        riskEl.textContent = 'Uncertain — review closely'; riskEl.style.color = 'var(--amber)';
+      } else {
+        riskEl.textContent = 'Findings present'; riskEl.style.color = 'var(--amber)';
+      }
+
+      document.getElementById('repRecommendation').textContent = 'Clinical review by a qualified eye-care professional is advised.';
+      note.textContent = 'This reflects your most recent real AI analysis. "Download PDF" generates an actual PDF report from the backend, with the original image and Grad-CAM heatmap embedded.';
+    } else {
+      tag.textContent = 'EXAMPLE DATA';
+      tag.style.color = ''; tag.style.borderColor = ''; tag.style.background = '';
+
+      document.getElementById('repScanId').textContent = 'SCN-2291';
+      document.getElementById('repQuality').textContent = 'Excellent';
+      document.getElementById('repFinding').textContent = 'Diabetic Retinopathy';
+      document.getElementById('repConfidence').textContent = '92.4%';
+
+      const riskEl = document.getElementById('repRisk');
+      riskEl.textContent = 'Moderate'; riskEl.style.color = 'var(--amber)';
+
+      document.getElementById('repRecommendation').textContent = 'Clinical review advised';
+      note.textContent = 'Analyze a real image first — this page will switch to your actual result, and "Download PDF" will generate a real report instead of using your browser\'s print dialog.';
+    }
+  }
+
+  // ---------- Session history (client-side only, resets on reload) ----------
+  function updateHistoryCount(){
+    const countEl = document.getElementById('historyCount');
+    const n = window.__sessionHistory.length;
+    countEl.textContent = n;
+    countEl.style.display = n > 0 ? 'inline-block' : 'none';
+  }
+
+  function renderHistoryPage(){
+    const empty = document.getElementById('historyEmptyState');
+    const content = document.getElementById('historyContent');
+    const grid = document.getElementById('historyGrid');
+    const clearBtn = document.getElementById('clearHistoryBtn');
+    const history = window.__sessionHistory;
+
+    if(history.length === 0){
+      empty.style.display = 'block';
+      content.style.display = 'none';
+      clearBtn.style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    content.style.display = 'block';
+    clearBtn.style.display = 'inline-flex';
+
+    grid.innerHTML = history.map(entry => {
+      const d = entry.result;
+      const isSelected = window.__historySelection.includes(entry.scan_id);
+      const timeStr = entry.timestamp.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      const isNormal = d.predicted_class.toLowerCase() === 'normal' && !d.is_uncertain;
+      const statusColor = isNormal ? 'var(--green)' : 'var(--amber)';
+      const flags = [];
+      if(d.is_uncertain) flags.push('⚠️ low confidence');
+      if(!d.models_agree) flags.push('⚠️ models disagreed');
+
+      return `
+      <div class="card history-card ${isSelected ? 'selected' : ''}" onclick="toggleHistorySelect('${entry.scan_id}')">
+        <div class="history-select-badge">✓</div>
+        <img class="history-thumb" src="${entry.thumb}">
+        <div class="detect-name">${d.predicted_class}</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:${statusColor}; margin-top:2px;">${d.confidence_pct}% confidence</div>
+        <div class="history-time">${entry.scan_id} · ${timeStr}${flags.length ? '<br>' + flags.join(' · ') : ''}</div>
+        <button class="btn btn-ghost" style="margin-top:12px; width:100%; font-size:12px; padding:8px;" onclick="setAsCurrentReport('${entry.scan_id}', event)">Open in Reports</button>
+      </div>`;
+    }).join('');
+
+    renderHistoryCompare();
+  }
+
+  function toggleHistorySelect(scanId){
+    const sel = window.__historySelection;
+    const pos = sel.indexOf(scanId);
+    if(pos > -1){
+      sel.splice(pos, 1);
+    } else {
+      if(sel.length >= 2) sel.shift(); // keep at most 2 selected — drop the oldest
+      sel.push(scanId);
+    }
+    renderHistoryPage();
+  }
+
+  function renderHistoryCompare(){
+    const block = document.getElementById('historyCompareBlock');
+    const grid = document.getElementById('historyCompareGrid');
+    const sel = window.__historySelection;
+
+    if(sel.length < 2){
+      block.style.display = 'none';
+      return;
+    }
+    block.style.display = 'block';
+
+    const entries = sel.map(id => window.__sessionHistory.find(e => e.scan_id === id)).filter(Boolean);
+    grid.innerHTML = entries.map(entry => {
+      const d = entry.result;
+      const timeStr = entry.timestamp.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      return `
+      <div class="card">
+        <div class="viewer-pair">
+          <div>
+            <div class="viewer-col-label">🖼️ Original</div>
+            <div class="viewer-frame" style="height:180px;"><img src="${entry.thumb}"></div>
+          </div>
+          <div>
+            <div class="viewer-col-label hl">🔥 Heatmap</div>
+            <div class="viewer-frame" style="height:180px;"><img src="${d.heatmap_data_url}"></div>
+          </div>
+        </div>
+        <div class="model-metric"><span>Scan ID</span><b>${entry.scan_id}</b></div>
+        <div class="model-metric"><span>Time</span><b>${timeStr}</b></div>
+        <div class="model-metric"><span>Finding</span><b>${d.predicted_class}</b></div>
+        <div class="model-metric"><span>Confidence</span><b>${d.confidence_pct}%</b></div>
+        <div class="model-metric" style="border-bottom:none;"><span>Second Opinion</span><b>${d.second_opinion_predicted_class} (${d.second_opinion_confidence_pct}%)</b></div>
+      </div>`;
+    }).join('');
+  }
+
+  function setAsCurrentReport(scanId, evt){
+    if(evt) evt.stopPropagation();
+    const entry = window.__sessionHistory.find(e => e.scan_id === scanId);
+    if(!entry) return;
+    window.__lastResult = entry.result;
+    window.__lastOriginalFile = entry.originalFile;
+    showToast(`Loaded ${scanId} into Reports.`, 'success');
+    goTo('reports');
+  }
+
+  function clearSessionHistory(){
+    window.__sessionHistory = [];
+    window.__historySelection = [];
+    updateHistoryCount();
+    renderHistoryPage();
+    showToast('Session history cleared.', 'info');
+  }
+
+  navItems.forEach(item=>item.addEventListener('click',()=>goTo(item.dataset.page)));
+
+  document.getElementById('hamburger').addEventListener('click',()=>{
+    document.getElementById('sidebar').classList.toggle('open');
+  });
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const previewCard = document.getElementById('previewCard');
+  const previewImg = document.getElementById('previewImg');
+
+  function handleFile(file){
+    if(!file) return;
+    currentFile = file;
+    const url = URL.createObjectURL(file);
+    previewImg.src = url;
+    document.getElementById('viewerImgOriginal').src = url;
+    document.getElementById('metaName').textContent = file.name;
+    document.getElementById('metaSize').textContent = (file.size/1024).toFixed(0)+' KB';
+    dropzone.style.display='none';
+    previewCard.style.display='grid';
+    document.getElementById('processingCard').style.display='none';
+    document.getElementById('resultsBlock').style.display='none';
+    hideErrorCard();
+  }
+  fileInput.addEventListener('change', e=>handleFile(e.target.files[0]));
+  dropzone.addEventListener('dragover', e=>{e.preventDefault(); dropzone.classList.add('drag');});
+  dropzone.addEventListener('dragleave', ()=>dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', e=>{
+    e.preventDefault(); dropzone.classList.remove('drag');
+    handleFile(e.dataTransfer.files[0]);
+  });
+  const stages = [
+    'Preprocessing image…','Running EfficientNet-B0…','MC Dropout uncertainty (30 passes)…',
+    'Running ResNet50 second opinion…','Computing Grad-CAM…','Finalizing…'
+  ];
+
+  let currentFile = null;
+  window.__sessionHistory = [];
+  window.__historySelection = [];
+
+  function startAnalysis(){
+    if(!currentFile){ showToast('Please select an image first.', 'error'); return; }
+    hideErrorCard();
+    previewCard.style.display='none';
+    const proc = document.getElementById('processingCard');
+    proc.style.display='block';
+    const fill = document.getElementById('scanFill');
+    const pct = document.getElementById('scanPct');
+    const stageText = document.getElementById('stageText');
+    const circumference = 327;
+    let progress = 0;
+    let stageIdx = 0;
+    stageText.textContent = stages[0];
+
+    // Visual progress climbs toward 90% while the real request is in flight,
+    // then jumps to 100% once the actual backend response arrives.
+    const interval = setInterval(()=>{
+      if(progress < 90){
+        progress += 2;
+        fill.style.strokeDashoffset = circumference - (circumference*progress/100);
+        pct.textContent = Math.min(progress,100)+'%';
+        const newStageIdx = Math.min(Math.floor(progress/17), stages.length-1);
+        if(newStageIdx!==stageIdx){ stageIdx=newStageIdx; stageText.textContent=stages[stageIdx]; }
+      }
+    },120);
+
+    const formData = new FormData();
+    formData.append('image', currentFile);
+
+    fetch('/predict', { method:'POST', body:formData })
+      .then(r=>{
+        if(!r.ok) throw new Error('Server error: '+r.status);
+        return r.json();
+      })
+      .then(data=>{
+        clearInterval(interval);
+        fill.style.strokeDashoffset = 0;
+        pct.textContent = '100%';
+        stageText.textContent = 'Complete';
+        setTimeout(()=>{
+          proc.style.display='none';
+          showRealResults(data);
+          showToast('Analysis complete.', 'success');
+        }, 300);
+      })
+      .catch(err=>{
+        clearInterval(interval);
+        proc.style.display='none';
+        showErrorCard(
+          "We couldn't reach the analysis backend.\n\n" +
+          "Make sure backend_app.py is running (python backend_app.py) and you're viewing this page at " +
+          "http://127.0.0.1:5000, not by opening the HTML file directly.\n\n" +
+          "(" + err.message + ")"
+        );
+        showToast('Analysis failed — see details below.', 'error');
+      });
+  }
+
+  function showRealResults(data){
+    // Give this analysis a scan ID and remember it (plus the original file)
+    // so the Reports page and PDF generator can use the real result.
+    data.scan_id = 'SCN-' + Date.now().toString().slice(-8);
+    window.__lastResult = data;
+    window.__lastOriginalFile = currentFile;
+
+    // Add to this tab's in-memory session history (not persisted anywhere).
+    window.__sessionHistory.unshift({
+      scan_id: data.scan_id,
+      timestamp: new Date(),
+      thumb: previewImg.src,
+      result: data,
+      originalFile: currentFile,
+    });
+    updateHistoryCount();
+
+    document.getElementById('primaryFindingText').textContent = data.predicted_class;
+    document.getElementById('confBigText').textContent = data.confidence_pct + '%';
+
+    const badge = document.getElementById('severityBadge');
+    if(data.is_uncertain){
+      badge.className = 'severity-badge sev-mild';
+      badge.textContent = '🟡 Low Confidence — Review Recommended';
+    } else if(data.predicted_class.toLowerCase() === 'normal'){
+      badge.className = 'severity-badge sev-mild';
+      badge.style.background = 'rgba(34,197,94,0.12)';
+      badge.style.borderColor = 'var(--green)';
+      badge.style.color = '#6EE7A8';
+      badge.textContent = '🟢 Normal — Routine Follow-up';
+    } else {
+      badge.className = 'severity-badge sev-mild';
+      badge.textContent = '🟡 Findings Present — Follow-up Recommended';
+    }
+
+    // Real 5-class probability distribution, replacing the old fake detection cards
+    const grid = document.getElementById('detectGrid');
+    const entries = Object.entries(data.probabilities).sort((a,b)=>b[1]-a[1]);
+    grid.innerHTML = entries.map(([name, pct])=>{
+      const isTop = name === data.predicted_class;
+      const color = isTop ? 'var(--cyan)' : 'var(--text-faint)';
+      return `
+      <div class="detect-card">
+        <div class="detect-top">
+          <div class="detect-name">${name}</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:${isTop?'var(--cyan)':'var(--text-dim)'};">${pct}%</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${color};"></div></div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('effnetResultName').textContent = data.predicted_class;
+    document.getElementById('effnetResultConf').textContent = data.confidence_pct + '% confidence';
+    document.getElementById('resnetResultName').textContent = data.second_opinion_predicted_class;
+    document.getElementById('resnetResultConf').textContent = data.second_opinion_confidence_pct + '% confidence';
+
+    const agreeBadge = document.getElementById('agreementBadge');
+    if(data.models_agree){
+      agreeBadge.innerHTML = '<span class="status-pill pill-clear">✅ Models Agree</span>';
+    } else {
+      agreeBadge.innerHTML = '<span class="status-pill pill-detected">⚠️ Models Disagree</span>';
+    }
+
+    // Real Grad-CAM heatmap, shown side-by-side with the original
+    document.getElementById('viewerImgHeatmap').src = data.heatmap_data_url;
+    document.getElementById('viewerImgOriginal').src = previewImg.src;
+
+    document.getElementById('resultsBlock').style.display='block';
+  }
+
+  function useSample(){
+    const c=document.createElement('canvas'); c.width=400; c.height=400;
+    const ctx=c.getContext('2d');
+    const g=ctx.createRadialGradient(200,200,20,200,200,200);
+    g.addColorStop(0,'#f2b06a'); g.addColorStop(0.5,'#c9622d'); g.addColorStop(1,'#1a0d05');
+    ctx.fillStyle=g; ctx.fillRect(0,0,400,400);
+    c.toBlob(blob=>handleFile(new File([blob],'sample_fundus.png',{type:'image/png'})));
+  }
+  function resetUpload(){
+    dropzone.style.display='block';
+    previewCard.style.display='none';
+    document.getElementById('processingCard').style.display='none';
+    document.getElementById('resultsBlock').style.display='none';
+    hideErrorCard();
+    fileInput.value='';
+    currentFile = null;
+  }
+</script>
+</body>
+</html>
