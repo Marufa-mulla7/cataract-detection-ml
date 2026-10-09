@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Eye Anomaly Detection — Concept Preview</title>
+<title>OcuVision — AI Eye Anomaly Screening</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -389,7 +389,7 @@
         <defs><radialGradient id="logoGrad"><stop offset="0%" stop-color="#22D3EE"/><stop offset="100%" stop-color="#3B82F6"/></radialGradient></defs>
       </svg>
       <div>
-        <div class="logo-text">Eye Anomaly Detection</div>
+        <div class="logo-text">OcuVision</div>
         <div class="logo-sub">Intelligent Eye Anomaly Detection</div>
       </div>
     </div>
@@ -397,7 +397,7 @@
     <div class="nav-group" id="navGroup">
       <div class="nav-item active" data-page="dashboard">📊 Dashboard</div>
       <div class="nav-item" data-page="analyze">🔬 Analyze Image</div>
-      <div class="nav-item" data-page="analyze">📤 Upload Scan</div>
+      
       <div class="nav-item" data-page="history">🕘 Session History<span id="historyCount" style="margin-left:auto; font-size:10px; background:rgba(34,211,238,0.16); color:var(--cyan); padding:2px 7px; border-radius:99px; display:none;"></span></div>
       <div class="nav-item" data-page="analytics">📈 Analytics</div>
       <div class="nav-item" data-page="model">🧠 AI Model</div>
@@ -415,7 +415,7 @@
       <div style="display:flex; align-items:center;">
         <div class="hamburger" id="hamburger">☰</div>
         <div class="topbar-left">
-          <h1 id="pageTitle">Eye Anomaly Detection</h1>
+          <h1 id="pageTitle">OcuVision</h1>
           <div class="breadcrumb" id="crumb">Dashboard / Overview</div>
         </div>
       </div>
@@ -436,7 +436,7 @@
       <div class="hero">
         <div>
           <h2>AI-Powered <span>Eye Anomaly Detection</span></h2>
-          <p>Upload a retinal or ocular image and let the computer-vision model analyze visual patterns, detect abnormalities, and generate an interpretable screening report.</p>
+          <p>Upload a fundus (retinal) image and let two deep-learning models screen it for five conditions, explain the result with Grad-CAM, and generate a screening report.</p>
           <div class="hero-actions">
             <button class="btn btn-primary" onclick="goTo('analyze')">+ Upload Eye Image</button>
             <button class="btn btn-ghost" onclick="goTo('analytics')">View Analytics</button>
@@ -445,7 +445,7 @@
         <div class="hero-visual">
           <div class="hero-eye"></div>
           <div class="float-label fl-1">Retinal Vessel Analysis<b>Active</b></div>
-          <div class="float-label fl-2">AI Confidence<b>96.8%</b></div>
+          <div class="float-label fl-2">ResNet50 Test Accuracy<b>95.2%</b></div>
           <div class="float-label fl-3">Lesion Detection<b>Scanning…</b></div>
           <div class="float-label fl-4">Image Quality<b>Excellent</b></div>
         </div>
@@ -483,7 +483,7 @@
           <tr><th>Scan ID</th><th>Type</th><th>Date</th><th>Result</th><th>Confidence</th><th>Risk</th><th>Status</th><th>Action</th></tr>
           <tr><td class="mono">SCN-2291</td><td>Fundus</td><td>2026-08-24</td><td>Diabetic Retinopathy</td><td class="mono">92.4%</td><td><span class="badge badge-amber">Moderate</span></td><td><span class="badge badge-green">Reviewed</span></td><td><span class="link-action">View</span><span class="link-action">Report</span></td></tr>
           <tr><td class="mono">SCN-2290</td><td>Fundus</td><td>2026-08-24</td><td>Normal</td><td class="mono">98.1%</td><td><span class="badge badge-green">Low</span></td><td><span class="badge badge-green">Reviewed</span></td><td><span class="link-action">View</span><span class="link-action">Report</span></td></tr>
-          <tr><td class="mono">SCN-2289</td><td>OCT</td><td>2026-08-23</td><td>Glaucoma Risk</td><td class="mono">88.7%</td><td><span class="badge badge-red">High</span></td><td><span class="badge badge-amber">Pending</span></td><td><span class="link-action">View</span><span class="link-action">Report</span></td></tr>
+          <tr><td class="mono">SCN-2289</td><td>Fundus</td><td>2026-08-23</td><td>Glaucoma Risk</td><td class="mono">88.7%</td><td><span class="badge badge-red">High</span></td><td><span class="badge badge-amber">Pending</span></td><td><span class="link-action">View</span><span class="link-action">Report</span></td></tr>
           <tr><td class="mono">SCN-2288</td><td>Fundus</td><td>2026-08-23</td><td>Cataract Indicators</td><td class="mono">90.2%</td><td><span class="badge badge-amber">Moderate</span></td><td><span class="badge badge-green">Reviewed</span></td><td><span class="link-action">View</span><span class="link-action">Report</span></td></tr>
         </table>
       </div>
@@ -494,13 +494,13 @@
       <div class="card">
         <div class="upload-card" id="dropzone">
           <svg class="upload-icon" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="#22D3EE" stroke-width="1.5" opacity="0.5"/><path d="M32 20v20M22 30l10-10 10 10" stroke="#22D3EE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 42h24" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/></svg>
-          <h3>Drag &amp; drop a retinal, fundus, OCT, or ocular image</h3>
+          <h3>Drag &amp; drop a fundus (retinal) image</h3>
           <p>or use one of the options below</p>
-          <div class="format-row">JPG • JPEG • PNG • TIFF</div>
+          <div class="format-row">JPG • JPEG • PNG • TIFF</div><p style="font-size:12px; color:var(--amber); margin:-8px 0 16px 0;">Fundus (retinal) photographs only. Academic screening aid, not a medical device.</p>
           <div class="upload-btns">
             <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Browse Files</button>
-            <button class="btn btn-ghost">Take Photo</button>
-            <button class="btn btn-ghost" onclick="useSample()">Use Sample Image</button>
+            
+            
           </div>
           <input type="file" id="fileInput" accept="image/*" style="display:none">
         </div>
@@ -509,9 +509,9 @@
           <img id="previewImg" class="preview-img" src="">
           <div>
             <div class="meta-row"><span>Filename</span><b id="metaName">—</b></div>
-            <div class="meta-row"><span>Resolution</span><b id="metaRes">1024 × 1024</b></div>
+            <div class="meta-row"><span>Resolution</span><b id="metaRes">—</b></div>
             <div class="meta-row"><span>File size</span><b id="metaSize">—</b></div>
-            <div class="meta-row"><span>Image quality</span><b style="color:var(--green)">Excellent</b></div>
+            <div class="meta-row"><span>Image quality</span><b>Not assessed</b></div>
             <div style="margin-top:18px; display:flex; gap:10px;">
               <button class="btn btn-primary" onclick="startAnalysis()">Analyze Image</button>
               <button class="btn btn-ghost" onclick="resetUpload()">Remove Image</button>
@@ -551,7 +551,7 @@
             <div class="card-title" id="primaryFindingText" style="font-size:22px; margin:6px 0 12px 0;">—</div>
             <span class="severity-badge sev-mild" id="severityBadge">—</span>
             <p style="margin-top:16px; color:var(--text-dim); font-size:13.5px; line-height:1.6;">
-              <b style="color:var(--text)">AI-assisted screening result — requires professional clinical review.</b> This output is not a definitive medical diagnosis.
+              <b style="color:var(--text)">AI-assisted screening result — requires professional clinical review.</b> This output is not a definitive medical diagnosis, and confidence scores are not calibrated probabilities.
             </p>
           </div>
           <div style="text-align:center;">
@@ -565,17 +565,17 @@
 
         <div class="section-heading">Second Opinion — Cross-Model Check</div>
         <div class="card">
-          <p style="color:var(--text-dim); font-size:13px; margin-bottom:14px;">Every prediction is independently cross-checked by a second, separately-trained architecture (EfficientNet-B0). On the real test set, the two models agree 96.4% of the time (98.0% accuracy on agreed cases); when they disagree (3.6% of cases), ResNet50 is right 64.7% of the time vs. EfficientNet-B0 at 29.4%.</p>
+          <p style="color:var(--text-dim); font-size:13px; margin-bottom:14px;">Every prediction is independently cross-checked by a second, separately-trained architecture (EfficientNet-B0). On the 583-image internal test set, the two models agree on 94.7% of images (552/583); on the 31 disagreements (5.3%), EfficientNet-B0 was correct on 18, ResNet50 on 12, and both were wrong on 1. Disagreement triggers a review flag.</p>
           <div class="grid grid-3">
             <div class="detect-card">
               <div class="card-eyebrow">Primary Model (ResNet50)</div>
-              <div class="card-title" id="effnetResultName" style="font-size:16px; margin-top:6px;">—</div>
-              <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-dim); margin-top:4px;" id="effnetResultConf">—</div>
+              <div class="card-title" id="primaryResultName" style="font-size:16px; margin-top:6px;">—</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-dim); margin-top:4px;" id="primaryResultConf">—</div>
             </div>
             <div class="detect-card">
               <div class="card-eyebrow">Second Opinion (EfficientNet-B0)</div>
-              <div class="card-title" id="resnetResultName" style="font-size:16px; margin-top:6px;">—</div>
-              <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-dim); margin-top:4px;" id="resnetResultConf">—</div>
+              <div class="card-title" id="secondResultName" style="font-size:16px; margin-top:6px;">—</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-dim); margin-top:4px;" id="secondResultConf">—</div>
             </div>
             <div class="detect-card" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
               <div class="card-eyebrow">Agreement</div>
@@ -650,7 +650,7 @@
       <div class="section-heading">Analytics<span class="placeholder-tag">EXAMPLE DATA</span></div>
       <div class="grid grid-4">
         <div class="card stat-card"><div class="card-eyebrow">Avg. Confidence</div><div class="stat-num" style="color:var(--cyan)">94.2%</div></div>
-        <div class="card stat-card"><div class="card-eyebrow">Model Accuracy</div><div class="stat-num" style="color:var(--purple)">96.2%</div></div>
+        <div class="card stat-card"><div class="card-eyebrow">Model Accuracy (ResNet50 test)</div><div class="stat-num" style="color:var(--purple)">95.2%</div></div>
         <div class="card stat-card"><div class="card-eyebrow">Avg. Processing Time</div><div class="stat-num">2.4s</div></div>
         <div class="card stat-card"><div class="card-eyebrow">Scans This Week</div><div class="stat-num">187</div></div>
       </div>
@@ -698,17 +698,17 @@
       <div class="card" style="overflow-x:auto;">
         <table>
           <tr><th>Class</th><th>Images</th><th>Source</th></tr>
-          <tr><td>Normal</td><td class="mono">300</td><td>Cataract Dataset (jr2ngb/cataractdataset)</td></tr>
-          <tr><td>Cataract</td><td class="mono">382</td><td>Cataract Dataset + ODIR-5K boost</td></tr>
-          <tr><td>Glaucoma</td><td class="mono">340</td><td>Cataract Dataset + ODIR-5K boost</td></tr>
-          <tr><td>AMD</td><td class="mono">300</td><td>RFMiD (100 real + 200 synthetic augmented)</td></tr>
-          <tr><td>Diabetic Retinopathy</td><td class="mono">1,857</td><td>APTOS 2019</td></tr>
+          <tr><td>Normal</td><td class="mono">900</td><td>Cataract Dataset (jr2ngb/cataractdataset) + additional sources (see report)</td></tr>
+          <tr><td>Cataract</td><td class="mono">900</td><td>Cataract Dataset + ODIR-5K boost</td></tr>
+          <tr><td>Glaucoma</td><td class="mono">900</td><td>Cataract Dataset + ODIR-5K boost</td></tr>
+          <tr><td>AMD</td><td class="mono">900</td><td>188 real sources (RFMiD 100 + ADAM 88) + 712 augmented (training only)</td></tr>
+          <tr><td>Diabetic Retinopathy</td><td class="mono">1,000</td><td>APTOS 2019: 971 unique real + 29 augmented (training only)</td></tr>
         </table>
         <p style="color:var(--text-dim); font-size:12.5px; margin-top:14px;">
-          <b style="color:var(--text)">3,479 images total</b>, split 70/15/15 into train / validation / test (2,227 / 476 / 476). All test-set figures below are computed on the 476 held-out test images.
+          <b style="color:var(--text)">4,600 images total</b>, split into train / validation / test (3,434 / 583 / 583). Validation and test sets contain real images only; augmented images are in the training split only. All test-set figures below are computed on the 583 held-out test images.
         </p>
         <p style="color:var(--amber); font-size:12px; margin-top:8px; line-height:1.5;">
-          ⚠ Honest caveat: 200 of AMD's 300 training images are synthetic augmented duplicates of only 100 real source photos, and Diabetic Retinopathy makes up 53% of the full dataset. Both facts affect how the per-class results below should be read — see Known Limitations.
+          ⚠ Honest caveat: 712 of AMD's 900 images (84% of its training images) are augmented copies of only 132 real training photos (188 unique real AMD sources overall), and Diabetic Retinopathy is the largest class at 1,000 of 4,600 images (21.7%). Both facts affect how the per-class results below should be read. See Known Limitations.
         </p>
       </div>
 
@@ -717,86 +717,86 @@
         <div class="card">
           <div class="card-eyebrow">Primary Model</div>
           <div class="card-title" style="font-size:18px;">ResNet50</div>
-          <div class="model-metric"><span>Validation Accuracy</span><b>96.01%</b></div>
-          <div class="model-metric"><span>Test Accuracy</span><b>97%</b></div>
-          <div class="model-metric"><span>Macro F1</span><b>0.94</b></div>
-          <div class="model-metric"><span>Epochs</span><b>20 (no early stop)</b></div>
-          <div class="model-metric" style="border-bottom:none;"><span>Training Time</span><b>337.5 min</b></div>
+          <div class="model-metric"><span>Validation Accuracy</span><b>95.03%</b></div>
+          <div class="model-metric"><span>Test Accuracy</span><b>95.20% (555/583)</b></div>
+          <div class="model-metric"><span>Macro F1</span><b>0.96</b></div>
+          <div class="model-metric"><span>Epochs</span><b>20 (best at epoch 17)</b></div>
+          <div class="model-metric" style="border-bottom:none;"><span>Training Time</span><b>about 6 h 56 min (CPU)</b></div>
         </div>
         <div class="card">
           <div class="card-eyebrow">Second-Opinion Model</div>
           <div class="card-title" style="font-size:18px;">EfficientNet-B0</div>
-          <div class="model-metric"><span>Validation Accuracy</span><b>94.33%</b></div>
-          <div class="model-metric"><span>Test Accuracy</span><b>96%</b></div>
-          <div class="model-metric"><span>Macro F1</span><b>0.92</b></div>
-          <div class="model-metric"><span>Epochs</span><b>10 (early stopped)</b></div>
-          <div class="model-metric" style="border-bottom:none;"><span>Training Time</span><b>123.3 min</b></div>
+          <div class="model-metric"><span>Validation Accuracy</span><b>96.23%</b></div>
+          <div class="model-metric"><span>Test Accuracy</span><b>96.23% (561/583)</b></div>
+          <div class="model-metric"><span>Macro F1</span><b>0.96</b></div>
+          <div class="model-metric"><span>Epochs</span><b>20 (best at epoch 20)</b></div>
+          <div class="model-metric" style="border-bottom:none;"><span>Training Time</span><b>about 3 h (CPU)</b></div>
         </div>
       </div>
       <p style="color:var(--text-dim); font-size:12.5px; margin-top:10px; line-height:1.6;">
-        ResNet50 became primary after a data-augmentation pipeline bug was found and fixed mid-project — the architecture ranking flipped from the pre-fix result (EfficientNet-B0 had led, at 97% vs 95% test accuracy). Both models were retrained after the fix.
+        ResNet50 is the primary model by design: MC Dropout uncertainty and Grad-CAM are built around it. EfficientNet-B0 is slightly more accurate on the internal test set (about 96.2% vs 95.2%) and acts as an independent second opinion.
       </p>
 
       <div class="section-heading" style="margin-top:28px;">Per-Class F1 Score</div>
       <div class="card" style="overflow-x:auto;">
         <table>
           <tr><th>Class</th><th>EfficientNet-B0</th><th>ResNet50 (primary)</th></tr>
-          <tr><td>Normal</td><td class="mono">0.89</td><td class="mono">0.88</td></tr>
-          <tr><td>Cataract</td><td class="mono">0.90</td><td class="mono">0.92</td></tr>
-          <tr><td>Glaucoma</td><td class="mono">0.84</td><td class="mono">0.89</td></tr>
-          <tr><td>AMD</td><td class="mono">0.99</td><td class="mono">0.99</td></tr>
-          <tr><td>Diabetic Retinopathy</td><td class="mono">0.99</td><td class="mono">1.00</td></tr>
+          <tr><td>Normal</td><td class="mono">0.94</td><td class="mono">0.93</td></tr>
+          <tr><td>Cataract</td><td class="mono">0.96</td><td class="mono">0.95</td></tr>
+          <tr><td>Glaucoma</td><td class="mono">0.94</td><td class="mono">0.92</td></tr>
+          <tr><td>AMD</td><td class="mono">0.98</td><td class="mono">0.98</td></tr>
+          <tr><td>Diabetic Retinopathy</td><td class="mono">1.00</td><td class="mono">1.00</td></tr>
         </table>
       </div>
 
-      <div class="section-heading" style="margin-top:28px;">Failure Case Breakdown <span style="font-size:12px; color:var(--text-faint); font-weight:500; margin-left:8px;">— ResNet50, 15 / 476 test images misclassified (3.2%)</span></div>
+      <div class="section-heading" style="margin-top:28px;">Failure Case Breakdown <span style="font-size:12px; color:var(--text-faint); font-weight:500; margin-left:8px;">— ResNet50, 28 / 583 test images misclassified (4.8%)</span></div>
       <div class="card" style="overflow-x:auto;">
         <table>
           <tr><th>True Class</th><th>Errors</th><th>Total</th><th>Error Rate</th></tr>
-          <tr><td>Normal</td><td class="mono">2</td><td class="mono">46</td><td><span class="badge badge-amber">4.3%</span></td></tr>
-          <tr><td>Cataract</td><td class="mono">5</td><td class="mono">52</td><td><span class="badge badge-amber">9.6%</span></td></tr>
-          <tr><td>Glaucoma</td><td class="mono">8</td><td class="mono">44</td><td><span class="badge badge-red">18.2%</span></td></tr>
-          <tr><td>AMD</td><td class="mono">0</td><td class="mono">42</td><td><span class="badge badge-green">0%</span></td></tr>
-          <tr><td>Diabetic Retinopathy</td><td class="mono">0</td><td class="mono">292</td><td><span class="badge badge-green">0%</span></td></tr>
+          <tr><td>Normal</td><td class="mono">9</td><td class="mono">135</td><td><span class="badge badge-amber">6.7%</span></td></tr>
+          <tr><td>Cataract</td><td class="mono">11</td><td class="mono">135</td><td><span class="badge badge-amber">8.1%</span></td></tr>
+          <tr><td>Glaucoma</td><td class="mono">7</td><td class="mono">135</td><td><span class="badge badge-amber">5.2%</span></td></tr>
+          <tr><td>AMD</td><td class="mono">1</td><td class="mono">28</td><td><span class="badge badge-amber">3.6%</span></td></tr>
+          <tr><td>Diabetic Retinopathy</td><td class="mono">0</td><td class="mono">150</td><td><span class="badge badge-green">0%</span></td></tr>
         </table>
         <p style="color:var(--text-dim); font-size:12.5px; margin-top:14px; line-height:1.6;">
-          Every misclassification falls within the Normal / Cataract / Glaucoma trio — three visually-overlapping conditions. AMD and Diabetic Retinopathy have zero test-set errors.
+          27 of the 28 errors fall within the Normal / Cataract / Glaucoma trio, and Glaucoma is involved in 23 of them. The single AMD error was predicted as Glaucoma, and Diabetic Retinopathy has zero test-set errors. AMD's test set contains only 28 images, so its error rate is imprecise.
         </p>
       </div>
 
       <div class="section-heading" style="margin-top:28px;">Second-Opinion Agreement</div>
       <div class="grid grid-2">
         <div class="card">
-          <div class="card-eyebrow">Agreement on 476 test images</div>
-          <div class="model-metric"><span>Models agree</span><b>459 / 476 (96.4%)</b></div>
-          <div class="model-metric"><span>Accuracy when agree</span><b style="color:var(--green)">98.04%</b></div>
-          <div class="model-metric"><span>Models disagree</span><b>17 / 476 (3.6%)</b></div>
-          <div class="model-metric"><span>Primary accuracy when disagree</span><b style="color:var(--amber)">64.71%</b></div>
-          <div class="model-metric" style="border-bottom:none;"><span>Second-opinion accuracy when disagree</span><b style="color:var(--red)">29.41%</b></div>
+          <div class="card-eyebrow">Agreement on 583 test images</div>
+          <div class="model-metric"><span>Models agree</span><b>552 / 583 (94.7%)</b></div>
+          <div class="model-metric"><span>Accuracy when agree</span><b style="color:var(--green)">98.37%</b></div>
+          <div class="model-metric"><span>Models disagree</span><b>31 / 583 (5.3%)</b></div>
+          <div class="model-metric"><span>Primary accuracy when disagree</span><b style="color:var(--red)">38.71%</b></div>
+          <div class="model-metric" style="border-bottom:none;"><span>Second-opinion accuracy when disagree</span><b style="color:var(--green)">58.06%</b></div>
         </div>
         <div class="card">
           <div class="card-eyebrow">Cost-Weighted Evaluation</div>
           <p style="color:var(--text-dim); font-size:12px; margin:6px 0 10px 0; line-height:1.5;">Re-scores primary-model errors with an asymmetric cost: missed disease = 10, disease-confused-with-disease = 5, false alarm = 1.</p>
-          <div class="model-metric"><span>Plain accuracy</span><b>96.8% (461/476)</b></div>
-          <div class="model-metric"><span>Cost-weighted score</span><b>0.9754</b></div>
-          <div class="model-metric"><span>Missed disease (disease → Normal)</span><b style="color:var(--red)">10 cases</b></div>
-          <div class="model-metric" style="border-bottom:none;"><span>False alarm (Normal → disease)</span><b>2 cases</b></div>
+          <div class="model-metric"><span>Plain accuracy</span><b>95.2% (555/583)</b></div>
+          <div class="model-metric"><span>Cost-weighted score</span><b>0.9744</b></div>
+          <div class="model-metric"><span>Missed disease (disease → Normal)</span><b style="color:var(--red)">9 cases</b></div>
+          <div class="model-metric" style="border-bottom:none;"><span>False alarm (Normal → disease)</span><b>9 cases</b></div>
         </div>
       </div>
       <p style="color:var(--text-dim); font-size:12.5px; margin-top:10px; line-height:1.6;">
-        The cost-weighted score sits close to plain accuracy, but <b style="color:var(--text)">10 of the model's 15 total test-set errors (67%) are missed-disease cases</b> — the most clinically dangerous outcome, where a diseased eye is called Normal. When two independently-trained models disagree, treat the result with extra caution; that's why disagreement is surfaced in every real analysis result.
+        The cost-weighted score sits close to plain accuracy, but <b style="color:var(--text)">9 of the model's 28 test-set errors (32%) are missed-disease cases (Cataract or Glaucoma called Normal)</b> — the most clinically dangerous outcome, where a diseased eye is called Normal. When two independently-trained models disagree, treat the result with extra caution; that's why disagreement is surfaced in every real analysis result.
       </p>
 
       <div class="section-heading" style="margin-top:28px;">Known Limitations</div>
       <div class="card">
         <ol style="color:var(--text-dim); font-size:13px; line-height:1.9; padding-left:20px;">
-          <li><b style="color:var(--text)">AMD's training data is 67% synthetic</b> (200 of 300 images are augmented duplicates of only 100 real photos) — its near-perfect F1 may partly reflect recognizing "known source image, transformed" rather than fully generalizable AMD features.</li>
-          <li><b style="color:var(--text)">Diabetic Retinopathy dominates the dataset</b> (53% of all images), which partly explains its near-perfect scores independent of genuine per-class discriminative power.</li>
+          <li><b style="color:var(--text)">AMD's training data is 84% augmented</b> (712 of 844 training images are augmented copies of only 132 real training photos; 188 unique real sources overall), so its near-perfect F1 may partly reflect recognizing "known source image, transformed" rather than fully generalizable AMD features. Its test set has only 28 images.</li>
+          <li><b style="color:var(--text)">Diabetic Retinopathy is the largest class</b> (1,000 of 4,600 images, 21.7%). Its perfect internal scores likely reflect single-source imaging conditions; an external DR image was classified as Normal, so internal results must not be read as real-world performance.</li>
           <li><b style="color:var(--text)">No validation on real hospital-sourced images.</b> The model hasn't been tested on images from different cameras, lighting, or patient populations than its Kaggle training sources.</li>
-          <li><b style="color:var(--text)">Small per-bin sample sizes</b> in calibration analysis limit statistical confidence for Normal, Cataract, and Glaucoma specifically.</li>
+          <li><b style="color:var(--text)">Confidence is not calibrated.</b> In a 100-image check the Monte Carlo Dropout flag never fired, even for the two errors (99.6% and 99.9% confidence), so the review flag also uses model disagreement and confidence below 70%.</li>
           <li><b style="color:var(--text)">External eye photographs are out of scope.</b> Only fundus (retinal) images are analyzed — external cataract clouding, conjunctivitis, etc. are not detected.</li>
           <li><b style="color:var(--text)">Grad-CAM is CNN-specific</b> and would not directly apply if a Vision Transformer were added in future work.</li>
-        </ol>
+        <li><b style="color:var(--text)">Mixed sources, unconfirmed patient-level split.</b> Classes come from different public datasets, so the models may partly learn source or camera features; leakage was checked at the parent-image level, not by patient.</li></ol>
       </div>
     </section>
 
@@ -856,7 +856,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `eye-anomaly-report-${window.__lastResult.scan_id}.pdf`;
+        a.download = `ocuvision-report-${window.__lastResult.scan_id}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -872,16 +872,28 @@
       });
   }
 
+  function buildRecommendation(d){
+    let t;
+    if(d.predicted_class.toLowerCase() === 'normal'){
+      t = 'The AI did not flag an anomaly in this image. This does not rule out eye disease; please consult an eye-care professional if you have symptoms or are due for a routine eye examination.';
+    } else {
+      t = 'The AI found features consistent with ' + d.predicted_class + '. Please have this confirmed by a qualified eye-care professional; this result is not a diagnosis.';
+    }
+    if(!d.models_agree) t += ' The two AI models disagree on this image, so the result is less reliable.';
+    if(d.needs_review) t += ' This result was flagged for review because of low confidence or model disagreement.';
+    return t + ' Results are only valid for retinal or eye images of the type used in training.';
+  }
+
   function shareReport(){
     let reportText;
     if(window.__lastResult){
       const d = window.__lastResult;
-      reportText = `Eye Anomaly Detection - Clinical Report\nScan ID: ${d.scan_id}\nAI Finding: ${d.predicted_class}\nConfidence: ${d.confidence_pct}%\nSecond Opinion: ${d.second_opinion_predicted_class} (${d.second_opinion_confidence_pct}%)\nModels Agree: ${d.models_agree ? 'Yes' : 'No'}\nRecommendation: Clinical review by a qualified eye-care professional is advised.`;
+      reportText = `OcuVision - Screening Report\nScan ID: ${d.scan_id}\nAI Finding: ${d.predicted_class}\nConfidence: ${d.confidence_pct}%\nSecond Opinion: ${d.second_opinion_predicted_class} (${d.second_opinion_confidence_pct}%)\nModels Agree: ${d.models_agree ? 'Yes' : 'No'}\nRecommendation: ${buildRecommendation(d)}`;
     } else {
-      reportText = 'Eye Anomaly Detection - Clinical Report\nScan ID: SCN-2291\nAI Finding: Diabetic Retinopathy\nConfidence: 92.4%\nRisk Assessment: Moderate\nRecommendation: Clinical review advised';
+      reportText = 'OcuVision - Screening Report\nScan ID: SCN-2291\nAI Finding: Diabetic Retinopathy\nConfidence: 92.4%\nRisk Assessment: Moderate\nRecommendation: Clinical review advised';
     }
     if(navigator.share){
-      navigator.share({ title: 'Eye Anomaly Detection Report', text: reportText }).catch(()=>{});
+      navigator.share({ title: 'OcuVision Screening Report', text: reportText }).catch(()=>{});
     } else if(navigator.clipboard){
       navigator.clipboard.writeText(reportText).then(()=>{
         showToast('Report summary copied to clipboard.', 'success');
@@ -1030,15 +1042,15 @@
       document.getElementById('repConfidence').textContent = d.confidence_pct + '%';
 
       const riskEl = document.getElementById('repRisk');
-      if(d.predicted_class.toLowerCase() === 'normal' && !d.is_uncertain){
+      if(d.predicted_class.toLowerCase() === 'normal' && !d.needs_review){
         riskEl.textContent = 'Low'; riskEl.style.color = 'var(--green)';
-      } else if(d.is_uncertain || !d.models_agree){
+      } else if(d.needs_review || !d.models_agree){
         riskEl.textContent = 'Uncertain — review closely'; riskEl.style.color = 'var(--amber)';
       } else {
         riskEl.textContent = 'Findings present'; riskEl.style.color = 'var(--amber)';
       }
 
-      document.getElementById('repRecommendation').textContent = 'Clinical review by a qualified eye-care professional is advised.';
+      document.getElementById('repRecommendation').textContent = buildRecommendation(d);
       note.textContent = 'This reflects your most recent real AI analysis. "Download PDF" generates an actual PDF report from the backend, with the original image and Grad-CAM heatmap embedded.';
     } else {
       tag.textContent = 'EXAMPLE DATA';
@@ -1086,10 +1098,10 @@
       const d = entry.result;
       const isSelected = window.__historySelection.includes(entry.scan_id);
       const timeStr = entry.timestamp.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-      const isNormal = d.predicted_class.toLowerCase() === 'normal' && !d.is_uncertain;
+      const isNormal = d.predicted_class.toLowerCase() === 'normal' && !d.needs_review;
       const statusColor = isNormal ? 'var(--green)' : 'var(--amber)';
       const flags = [];
-      if(d.is_uncertain) flags.push('⚠️ low confidence');
+      if(d.is_uncertain || d.confidence_pct < 70) flags.push('⚠️ low confidence');
       if(!d.models_agree) flags.push('⚠️ models disagreed');
 
       return `
@@ -1191,6 +1203,7 @@
     document.getElementById('viewerImgOriginal').src = url;
     document.getElementById('metaName').textContent = file.name;
     document.getElementById('metaSize').textContent = (file.size/1024).toFixed(0)+' KB';
+    previewImg.onload = () => { document.getElementById('metaRes').textContent = previewImg.naturalWidth + ' × ' + previewImg.naturalHeight; };
     dropzone.style.display='none';
     previewCard.style.display='grid';
     document.getElementById('processingCard').style.display='none';
@@ -1205,8 +1218,8 @@
     handleFile(e.dataTransfer.files[0]);
   });
   const stages = [
-    'Preprocessing image…','Running EfficientNet-B0…','MC Dropout uncertainty (30 passes)…',
-    'Running ResNet50 second opinion…','Computing Grad-CAM…','Finalizing…'
+    'Preprocessing image\u2026','Running ResNet50 primary analysis\u2026','MC Dropout uncertainty (30 passes)\u2026',
+    'Running EfficientNet-B0 second opinion\u2026','Computing Grad-CAM\u2026','Finalizing\u2026'
   ];
 
   let currentFile = null;
@@ -1244,7 +1257,7 @@
 
     fetch('/predict', { method:'POST', body:formData })
       .then(r=>{
-        if(!r.ok) throw new Error('Server error: '+r.status);
+        if(!r.ok){ return r.json().catch(()=>({})).then(j=>{ throw new Error(j.error || ('Server error: '+r.status)); }); }
         return r.json();
       })
       .then(data=>{
@@ -1262,7 +1275,7 @@
         clearInterval(interval);
         proc.style.display='none';
         showErrorCard(
-          "We couldn't reach the analysis backend.\n\n" +
+          "The analysis could not be completed.\n\n" +
           "Make sure backend_app.py is running (python backend_app.py) and you're viewing this page at " +
           "http://127.0.0.1:5000, not by opening the HTML file directly.\n\n" +
           "(" + err.message + ")"
@@ -1292,9 +1305,10 @@
     document.getElementById('confBigText').textContent = data.confidence_pct + '%';
 
     const badge = document.getElementById('severityBadge');
-    if(data.is_uncertain){
+    badge.removeAttribute('style');
+    if(data.needs_review){
       badge.className = 'severity-badge sev-mild';
-      badge.textContent = '🟡 Low Confidence — Review Recommended';
+      badge.textContent = '🟡 Flagged for Review — low confidence or model disagreement';
     } else if(data.predicted_class.toLowerCase() === 'normal'){
       badge.className = 'severity-badge sev-mild';
       badge.style.background = 'rgba(34,197,94,0.12)';
@@ -1322,10 +1336,10 @@
       </div>`;
     }).join('');
 
-    document.getElementById('effnetResultName').textContent = data.predicted_class;
-    document.getElementById('effnetResultConf').textContent = data.confidence_pct + '% confidence';
-    document.getElementById('resnetResultName').textContent = data.second_opinion_predicted_class;
-    document.getElementById('resnetResultConf').textContent = data.second_opinion_confidence_pct + '% confidence';
+    document.getElementById('primaryResultName').textContent = data.predicted_class;
+    document.getElementById('primaryResultConf').textContent = data.confidence_pct + '% confidence';
+    document.getElementById('secondResultName').textContent = data.second_opinion_predicted_class;
+    document.getElementById('secondResultConf').textContent = data.second_opinion_confidence_pct + '% confidence';
 
     const agreeBadge = document.getElementById('agreementBadge');
     if(data.models_agree){

@@ -1,42 +1,39 @@
 """
-OcuVision AI - backend server.
+OcuVision AI - backend server (updated).
 
 Serves the ocuvision-concept.html frontend AND exposes:
-  - a real /predict endpoint backed by your actual trained models - same
-    models, same MC Dropout uncertainty, same Grad-CAM, same second-opinion
-    logic as the working Streamlit app.
-  - a real /generate_report endpoint that builds an actual downloadable PDF
-    clinical report (via reportlab) from a real analysis result, embedding
-    the original image and the Grad-CAM heatmap side by side.
+  - /predict          : ResNet50 (primary, MC Dropout + Grad-CAM) plus
+                        EfficientNet-B0 second opinion on the uploaded image.
+  - /generate_report  : builds a downloadable PDF screening report.
 
-MODEL ROLES (updated after the data-augmentation bug fix and retrain):
-ResNet50 now outperforms EfficientNet-B0 on the real test set (97% vs 96%
-accuracy, 0.94 vs 0.92 macro F1), so ResNet50 is now the PRIMARY model and
-EfficientNet-B0 is the SECOND-OPINION cross-check - the reverse of the
-original (pre-fix) assignment.
+MODEL ROLES:
+ResNet50 is the PRIMARY model. EfficientNet-B0 is the SECOND-OPINION model.
+Both were trained on the final leakage-aware 4,600-image dataset.
 
 Run from the project root with:
     python backend_app.py
-
 Then open http://127.0.0.1:5000 in your browser.
 
-Requires reportlab in addition to the existing project dependencies:
-    pip install reportlab
+Requires: pip install reportlab
 """
 
 import os
+import re
 import sys
 import io
 import json
 import base64
+import threading
+import traceback
 from datetime import datetime
+from xml.sax.saxutils import escape
 
 import torch
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 from flask import Flask, request, jsonify, send_from_directory, send_file
 
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -46,27 +43,29 @@ from reportlab.platypus import (
 )
 
 # -------------------------------------------------------------------
-# Project paths
+# Project paths and settings
 # -------------------------------------------------------------------
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-# Primary model: ResNet50 (best test-set performer after the augmentation fix)
-PRIMARY_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "best_resnet50_5class.pt")
+PRIMARY_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "best_resnet50_5class_final.pt")
 PRIMARY_MODEL_KEY = "resnet50"
 PRIMARY_MODEL_LABEL = "ResNet50"
 
-# Second opinion: EfficientNet-B0
-SECOND_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "best_model_5class.pt")
+SECOND_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "best_efficientnet_b0_5class_final.pt")
 SECOND_MODEL_KEY = "efficientnet_b0"
 SECOND_MODEL_LABEL = "EfficientNet-B0"
 
 HTML_FILE = "ocuvision-concept.html"  # must sit in the same folder as this script
 
+MC_SAMPLES = 30
+LOW_CONFIDENCE_PCT = 70.0        # below this, the result is flagged for review
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
 # -------------------------------------------------------------------
-# Project imports (same code your Streamlit app already uses)
+# Project imports
 # -------------------------------------------------------------------
 
 from src.models import build_model
@@ -84,23 +83,33 @@ def display_name(class_key):
 
 
 # -------------------------------------------------------------------
-# Load both models once, at server startup (not per-request)
+# Load both models once, at server startup
 # -------------------------------------------------------------------
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"[startup] Using device: {DEVICE}")
+print(f"[startup] Class order used by the app: {list(CLASS_NAMES)}")
 
-print(f"[startup] Loading primary model: {PRIMARY_MODEL_LABEL}...")
-primary_model = build_model(PRIMARY_MODEL_KEY, num_classes=len(CLASS_NAMES), freeze_backbone=False)
-primary_model.load_state_dict(torch.load(PRIMARY_MODEL_PATH, map_location=DEVICE))
-primary_model.eval()
-primary_model = primary_model.to(DEVICE)
 
-print(f"[startup] Loading second-opinion model: {SECOND_MODEL_LABEL}...")
-second_model = build_model(SECOND_MODEL_KEY, num_classes=len(CLASS_NAMES), freeze_backbone=False)
-second_model.load_state_dict(torch.load(SECOND_MODEL_PATH, map_location=DEVICE))
-second_model.eval()
-second_model = second_model.to(DEVICE)
+def load_model(key, path, label):
+    print(f"[startup] Loading {label}...")
+    model = build_model(key, num_classes=len(CLASS_NAMES), freeze_backbone=False)
+    model.load_state_dict(torch.load(path, map_location=DEVICE))
+    model.eval()
+    return model.to(DEVICE)
+
+
+primary_model = load_model(PRIMARY_MODEL_KEY, PRIMARY_MODEL_PATH, PRIMARY_MODEL_LABEL)
+second_model = load_model(SECOND_MODEL_KEY, SECOND_MODEL_PATH, SECOND_MODEL_LABEL)
+
+# MC Dropout only works if the primary model actually contains Dropout layers.
+_dropouts = [(n, m.p) for n, m in primary_model.named_modules()
+             if isinstance(m, torch.nn.Dropout)]
+if _dropouts:
+    print(f"[startup] MC Dropout OK: {PRIMARY_MODEL_LABEL} has {len(_dropouts)} Dropout layer(s): {_dropouts}")
+else:
+    print(f"[startup] WARNING: {PRIMARY_MODEL_LABEL} has NO Dropout layers - "
+          f"MC Dropout uncertainty will not vary between passes.")
 
 print("[startup] Both models loaded. Ready.")
 
@@ -109,6 +118,16 @@ print("[startup] Both models loaded. Ready.")
 # -------------------------------------------------------------------
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
+
+# The models and Grad-CAM hooks are shared global objects, so handle one
+# prediction at a time.
+_inference_lock = threading.Lock()
+
+
+@app.errorhandler(413)
+def too_large(_e):
+    return jsonify({"error": "Image is too large (maximum 10 MB)."}), 413
 
 
 def numpy_image_to_base64(np_img_uint8):
@@ -118,6 +137,30 @@ def numpy_image_to_base64(np_img_uint8):
     pil_img.save(buf, format="PNG")
     encoded = base64.b64encode(buf.getvalue()).decode("utf-8")
     return f"data:image/png;base64,{encoded}"
+
+
+def open_image(file_stream):
+    """Open an uploaded image as RGB, fixing phone-photo rotation."""
+    image = Image.open(file_stream)
+    image = ImageOps.exif_transpose(image)
+    return image.convert("RGB")
+
+
+def build_recommendation(predicted_class, needs_review, models_agree):
+    """Server-side recommendation text (not taken from the browser)."""
+    if predicted_class.lower() == "normal":
+        text = ("The AI did not flag an anomaly in this image. This does not rule out eye disease; "
+                "please consult an eye-care professional if you have symptoms or are due for a "
+                "routine eye examination.")
+    else:
+        text = (f"The AI found features consistent with {predicted_class}. Please have this "
+                f"confirmed by a qualified eye-care professional; this result is not a diagnosis.")
+    if not models_agree:
+        text += " The two AI models disagree on this image, so the result is less reliable."
+    if needs_review:
+        text += " This result was flagged for review because of low confidence or model disagreement."
+    text += " Results are only valid for retinal or eye images of the type used in training."
+    return text
 
 
 @app.route("/")
@@ -130,60 +173,74 @@ def predict():
     if "image" not in request.files:
         return jsonify({"error": "No image file provided"}), 400
 
-    file = request.files["image"]
     try:
-        image = Image.open(file.stream).convert("RGB")
+        image = open_image(request.files["image"].stream)
     except Exception as e:
         return jsonify({"error": f"Could not read image: {e}"}), 400
 
-    transform = get_transforms(train=False)
-    input_tensor = transform(image).unsqueeze(0)
+    try:
+        with _inference_lock:
+            transform = get_transforms(train=False)
+            input_tensor = transform(image).unsqueeze(0)
 
-    # --- Primary model: ResNet50, with MC Dropout uncertainty ---
-    mean_probs, uncertainty, predicted_idx = mc_dropout_predict(
-        primary_model, input_tensor, num_samples=30, device=DEVICE
-    )
-    is_uncertain = bool(confidence_flag(mean_probs, uncertainty))
-    predicted_class = CLASS_NAMES[predicted_idx]
-    confidence_pct = float(mean_probs[predicted_idx]) * 100
+            # --- Primary model: ResNet50 with MC Dropout uncertainty ---
+            mean_probs, uncertainty, predicted_idx = mc_dropout_predict(
+                primary_model, input_tensor, num_samples=MC_SAMPLES, device=DEVICE
+            )
+            is_uncertain = bool(confidence_flag(mean_probs, uncertainty))
+            predicted_class = CLASS_NAMES[predicted_idx]
+            confidence_pct = float(mean_probs[predicted_idx]) * 100
 
-    # --- Second opinion: EfficientNet-B0, plain forward pass ---
-    with torch.no_grad():
-        second_input = input_tensor.to(DEVICE)
-        second_logits = second_model(second_input)
-        second_probs = torch.softmax(second_logits, dim=1).squeeze(0).cpu().numpy()
+            # --- Second opinion: EfficientNet-B0, plain forward pass ---
+            second_model.eval()
+            with torch.no_grad():
+                second_logits = second_model(input_tensor.to(DEVICE))
+                second_probs = torch.softmax(second_logits, dim=1).squeeze(0).cpu().numpy()
 
-    second_pred_idx = int(second_probs.argmax())
-    second_pred_class = CLASS_NAMES[second_pred_idx]
-    second_confidence_pct = float(second_probs[second_pred_idx]) * 100
-    models_agree = bool(second_pred_idx == predicted_idx)
+            second_pred_idx = int(second_probs.argmax())
+            second_pred_class = CLASS_NAMES[second_pred_idx]
+            second_confidence_pct = float(second_probs[second_pred_idx]) * 100
+            models_agree = bool(second_pred_idx == predicted_idx)
 
-    # --- Grad-CAM (for the primary model's predicted class) ---
-    display_img = preprocess_for_display(image)
-    heatmap = generate_gradcam(
-        primary_model, PRIMARY_MODEL_KEY, input_tensor, display_img,
-        target_class=predicted_idx, device=DEVICE,
-    )
-    heatmap_data_url = numpy_image_to_base64(heatmap)
+            # --- Grad-CAM (primary model, predicted class) ---
+            display_img = preprocess_for_display(image)
+            heatmap = generate_gradcam(
+                primary_model, PRIMARY_MODEL_KEY, input_tensor, display_img,
+                target_class=predicted_idx, device=DEVICE,
+            )
+            primary_model.eval()  # make sure nothing leaves the model in train mode
+            heatmap_data_url = numpy_image_to_base64(heatmap)
 
-    probabilities = {
-        display_name(name): round(float(p) * 100, 1)
-        for name, p in zip(CLASS_NAMES, mean_probs)
-    }
+        probabilities = {
+            display_name(name): round(float(p) * 100, 1)
+            for name, p in zip(CLASS_NAMES, mean_probs)
+        }
+        second_probabilities = {
+            display_name(name): round(float(p) * 100, 1)
+            for name, p in zip(CLASS_NAMES, second_probs)
+        }
 
-    response = {
-        "predicted_class": display_name(predicted_class),
-        "confidence_pct": round(confidence_pct, 1),
-        "is_uncertain": is_uncertain,
-        "primary_model_label": PRIMARY_MODEL_LABEL,
-        "second_model_label": SECOND_MODEL_LABEL,
-        "second_opinion_predicted_class": display_name(second_pred_class),
-        "second_opinion_confidence_pct": round(second_confidence_pct, 1),
-        "models_agree": models_agree,
-        "probabilities": probabilities,
-        "heatmap_data_url": heatmap_data_url,
-    }
-    return jsonify(response)
+        # Review flag: MC Dropout flag, low confidence, or the models disagree.
+        needs_review = bool(is_uncertain or not models_agree or confidence_pct < LOW_CONFIDENCE_PCT)
+
+        response = {
+            "predicted_class": display_name(predicted_class),
+            "confidence_pct": round(confidence_pct, 1),
+            "is_uncertain": is_uncertain,
+            "needs_review": needs_review,
+            "primary_model_label": PRIMARY_MODEL_LABEL,
+            "second_model_label": SECOND_MODEL_LABEL,
+            "second_opinion_predicted_class": display_name(second_pred_class),
+            "second_opinion_confidence_pct": round(second_confidence_pct, 1),
+            "models_agree": models_agree,
+            "probabilities": probabilities,
+            "second_opinion_probabilities": second_probabilities,
+            "heatmap_data_url": heatmap_data_url,
+        }
+        return jsonify(response)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": f"Prediction failed: {e}"}), 500
 
 
 # -------------------------------------------------------------------
@@ -191,15 +248,12 @@ def predict():
 # -------------------------------------------------------------------
 
 def _data_url_to_pil(data_url):
-    """Decode a data:image/...;base64,... URL (as returned by /predict) into a PIL Image."""
     _, encoded = data_url.split(",", 1)
     raw = base64.b64decode(encoded)
     return Image.open(io.BytesIO(raw)).convert("RGB")
 
 
 def _pil_to_rlimage(pil_img, width):
-    """Convert a PIL image into a reportlab Image flowable at a fixed width,
-    preserving aspect ratio."""
     buf = io.BytesIO()
     pil_img.save(buf, format="PNG")
     buf.seek(0)
@@ -208,11 +262,10 @@ def _pil_to_rlimage(pil_img, width):
 
 
 def build_clinical_report_pdf(report_data, original_pil_image):
-    """Build a clinical-style PDF report from a real /predict result and the
-    original uploaded image. Returns a BytesIO positioned at the start."""
+    """Build the PDF report. Returns a BytesIO positioned at the start."""
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=letter,
+        buf, pagesize=A4,
         topMargin=0.6 * inch, bottomMargin=0.6 * inch,
         leftMargin=0.7 * inch, rightMargin=0.7 * inch,
     )
@@ -236,7 +289,7 @@ def build_clinical_report_pdf(report_data, original_pil_image):
     )
     caption_style = ParagraphStyle(
         "Caption", parent=styles["Normal"], fontSize=9,
-        textColor=colors.HexColor("#5A6E85"), alignment=1,  # center
+        textColor=colors.HexColor("#5A6E85"), alignment=1,
     )
     disclaimer_style = ParagraphStyle(
         "Disclaimer", parent=styles["Normal"], fontSize=8,
@@ -246,18 +299,18 @@ def build_clinical_report_pdf(report_data, original_pil_image):
     story = []
 
     # --- Header ---
-    story.append(Paragraph("Eye Anomaly Detection", title_style))
-    story.append(Paragraph("AI-Assisted Ocular Screening Report", subtitle_style))
+    story.append(Paragraph("OcuVision", title_style))
+    story.append(Paragraph("AI-Assisted Eye Anomaly Screening Report", subtitle_style))
     story.append(HRFlowable(width="100%", color=colors.HexColor("#D7DEE6"), thickness=1))
     story.append(Spacer(1, 10))
 
     # --- Scan info ---
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     info_rows = [
-        ["Scan ID", report_data.get("scan_id", "N/A")],
+        ["Scan ID", str(report_data.get("scan_id", "N/A"))],
         ["Report Generated", generated_at],
-        ["Primary Model", report_data.get("primary_model_label", "ResNet50")],
-        ["Second-Opinion Model", report_data.get("second_model_label", "EfficientNet-B0")],
+        ["Primary Model", PRIMARY_MODEL_LABEL],
+        ["Second-Opinion Model", SECOND_MODEL_LABEL],
     ]
     info_table = Table(info_rows, colWidths=[1.9 * inch, 4.1 * inch])
     info_table.setStyle(TableStyle([
@@ -272,18 +325,20 @@ def build_clinical_report_pdf(report_data, original_pil_image):
     story.append(info_table)
 
     # --- AI finding ---
+    predicted_class = str(report_data.get("predicted_class", "N/A"))
+    models_agree = bool(report_data.get("models_agree"))
+    needs_review = bool(report_data.get("needs_review", report_data.get("is_uncertain")))
+
     story.append(Paragraph("AI Finding", section_style))
     finding_rows = [
-        ["Primary Finding", report_data.get("predicted_class", "N/A")],
+        ["Primary Finding", predicted_class],
         ["AI Confidence", f'{report_data.get("confidence_pct", "N/A")}%'],
-        ["Uncertainty Flag",
-         "Low confidence — review recommended" if report_data.get("is_uncertain")
-         else "Within normal confidence range"],
-        ["Second Opinion", report_data.get("second_opinion_predicted_class", "N/A")],
+        ["Review Flag",
+         "Flagged - review recommended" if needs_review else "Not flagged"],
+        ["Second Opinion", str(report_data.get("second_opinion_predicted_class", "N/A"))],
         ["Second Opinion Confidence", f'{report_data.get("second_opinion_confidence_pct", "N/A")}%'],
         ["Model Agreement",
-         "Models agree" if report_data.get("models_agree")
-         else "Models disagree — treat with extra caution"],
+         "Models agree" if models_agree else "Models disagree - treat with extra caution"],
     ]
     finding_table = Table(finding_rows, colWidths=[2.3 * inch, 3.7 * inch])
     finding_table.setStyle(TableStyle([
@@ -297,10 +352,11 @@ def build_clinical_report_pdf(report_data, original_pil_image):
     story.append(finding_table)
 
     # --- Class probability distribution ---
-    story.append(Paragraph("Class Probability Distribution", section_style))
+    story.append(Paragraph("Class Probability Distribution (primary model)", section_style))
     probs = report_data.get("probabilities", {}) or {}
     prob_rows = [["Class", "Probability"]] + [
-        [name, f"{pct}%"] for name, pct in sorted(probs.items(), key=lambda x: -x[1])
+        [str(name), f"{float(pct)}%"]
+        for name, pct in sorted(probs.items(), key=lambda x: -float(x[1]))
     ]
     prob_table = Table(prob_rows, colWidths=[3.6 * inch, 2.4 * inch])
     prob_table.setStyle(TableStyle([
@@ -313,7 +369,7 @@ def build_clinical_report_pdf(report_data, original_pil_image):
     ]))
     story.append(prob_table)
 
-    # --- Images: original + Grad-CAM heatmap, side by side ---
+    # --- Images: original + Grad-CAM heatmap ---
     story.append(Paragraph("Image Analysis", section_style))
     img_w = 2.55 * inch
 
@@ -324,8 +380,8 @@ def build_clinical_report_pdf(report_data, original_pil_image):
         except Exception:
             heatmap_pil = None
 
-    orig_cell = _pil_to_rlimage(original_pil_image, img_w) if original_pil_image else Paragraph("—", body_style)
-    heat_cell = _pil_to_rlimage(heatmap_pil, img_w) if heatmap_pil else Paragraph("—", body_style)
+    orig_cell = _pil_to_rlimage(original_pil_image, img_w) if original_pil_image else Paragraph("-", body_style)
+    heat_cell = _pil_to_rlimage(heatmap_pil, img_w) if heatmap_pil else Paragraph("-", body_style)
 
     img_table = Table(
         [
@@ -341,13 +397,10 @@ def build_clinical_report_pdf(report_data, original_pil_image):
     ]))
     story.append(img_table)
 
-    # --- Recommendation ---
+    # --- Recommendation (built on the server, not taken from the browser) ---
     story.append(Paragraph("Recommendation", section_style))
     story.append(Paragraph(
-        report_data.get(
-            "recommendation",
-            "Clinical review by a qualified eye-care professional is advised.",
-        ),
+        escape(build_recommendation(predicted_class, needs_review, models_agree)),
         body_style,
     ))
 
@@ -365,10 +418,12 @@ def build_clinical_report_pdf(report_data, original_pil_image):
     # --- Disclaimer ---
     story.append(Spacer(1, 14))
     story.append(Paragraph(
-        "This report is generated by an AI-assisted screening tool and is not a definitive medical "
-        "diagnosis. All findings must be reviewed and confirmed by a qualified, licensed eye-care "
-        "professional before any clinical decision is made. Model performance figures are based on "
-        "internal test-set evaluation and may not generalize to all populations or imaging conditions.",
+        "This report is generated by an academic AI screening tool (OcuVision) and is not a medical "
+        "diagnosis. It has not undergone clinical validation. All findings must be reviewed and "
+        "confirmed by a qualified, licensed eye-care professional before any clinical decision is "
+        "made. The models were trained on a limited dataset of five classes (Normal, Cataract, "
+        "Glaucoma, AMD, Diabetic Retinopathy) and may not generalise to other populations, cameras "
+        "or imaging conditions, or to images that are not eye images.",
         disclaimer_style,
     ))
 
@@ -379,12 +434,11 @@ def build_clinical_report_pdf(report_data, original_pil_image):
 
 @app.route("/generate_report", methods=["POST"])
 def generate_report():
-    """Build and return a real PDF clinical report for a real analysis result.
+    """Build and return a PDF report for an analysis result.
 
     Expects multipart/form-data with:
       - original_image: the same image file that was sent to /predict
-      - report_data: JSON string of the /predict response (plus a scan_id
-        added client-side)
+      - report_data: JSON string of the /predict response (plus a scan_id)
     """
     if "original_image" not in request.files:
         return jsonify({"error": "No original_image file provided"}), 400
@@ -393,22 +447,24 @@ def generate_report():
 
     try:
         report_data = json.loads(request.form["report_data"])
+        if not isinstance(report_data, dict):
+            raise ValueError("report_data must be a JSON object")
     except Exception as e:
         return jsonify({"error": f"Invalid report_data JSON: {e}"}), 400
 
-    file = request.files["original_image"]
     try:
-        original_image = Image.open(file.stream).convert("RGB")
+        original_image = open_image(request.files["original_image"].stream)
     except Exception as e:
         return jsonify({"error": f"Could not read original image: {e}"}), 400
 
     try:
         pdf_buffer = build_clinical_report_pdf(report_data, original_image)
     except Exception as e:
+        traceback.print_exc()
         return jsonify({"error": f"Could not build PDF report: {e}"}), 500
 
-    scan_id = report_data.get("scan_id", "scan")
-    filename = f"eye-anomaly-report-{scan_id}.pdf"
+    scan_id = re.sub(r"[^A-Za-z0-9_-]", "", str(report_data.get("scan_id", "scan")))[:40] or "scan"
+    filename = f"ocuvision-report-{scan_id}.pdf"
 
     return send_file(
         pdf_buffer,
