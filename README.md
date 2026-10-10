@@ -13,6 +13,10 @@ and every result must be reviewed by a qualified eye-care professional.
 - **Grad-CAM** heatmap showing which image regions drove the prediction.
 - **Web app** (Flask + HTML): upload an image, see the prediction, probabilities, second opinion,
   heatmap, session history, and download a PDF screening report.
+- **Batch analysis:** up to 30 images at once, with results exported as CSV.
+- **Live dashboard:** statistics come from a local scan log (`scans.db`, created on first run). Only results are
+  stored, never the uploaded images.
+- **Review flag:** a result is flagged when the two models disagree or the MC Dropout spread is high.
 
 ## Results (final held-out test set, 583 real images)
 
@@ -49,7 +53,7 @@ sources only and are not independent patient cases.
 ## Setup (Windows)
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Marufa-mulla7/cataract-detection-ml.git
 cd cataract-detection-ml
 python -m venv venv
 venv\Scripts\activate
@@ -61,7 +65,7 @@ Model weights are **not** in the repository. Place them in `models/`:
 - `models/best_resnet50_5class_final.pt`
 - `models/best_efficientnet_b0_5class_final.pt`
 
-Model weights are not included in this repository because of their size; contact the author to obtain them.
+Because of their size, the weights are not included; contact the author to obtain them.
 
 Class order used everywhere: `normal, cataract, glaucoma, amd, diabetic_retinopathy`.
 
@@ -71,7 +75,7 @@ Class order used everywhere: `normal, cataract, glaucoma, amd, diabetic_retinopa
 python backend_app.py
 ```
 
-Open http://127.0.0.1:5000
+The browser opens automatically; otherwise open http://127.0.0.1:5000
 
 ## Evaluate and check
 
@@ -79,8 +83,13 @@ Open http://127.0.0.1:5000
 python run_eval.py                    # EfficientNet-B0 on test and validation sets
 python pipeline_check.py 20           # sends test images through the real /predict endpoint
 python compare_modes.py               # deterministic vs MC Dropout, agreement statistics
-python uncertainty_analysis.py 2 val  # how well each review signal catches errors
+python uncertainty_analysis.py 2 val  # how well each review signal catches errors (use `test` only to report a chosen rule)
+python run_cost_weighted_evaluation.py  # cost-weighted evaluation of ResNet50
+python run_calibration_analysis.py      # reliability diagrams and ECE
+python dataset_stats.py                 # real vs augmented images and source mix per class
 ```
+
+These scripts need the dataset in `data/cataract_final` and the weights in `models/`.
 
 ## Training
 
@@ -94,20 +103,31 @@ and passed to the training loop. Optimizer: Adam (lr 1e-3); loss: class-weighted
 ## Project structure
 
 ```
-backend_app.py           Flask server: /predict and /generate_report
-ocuvision-concept.html   Web interface
-run_eval.py              Final evaluation (EfficientNet-B0)
-pipeline_check.py        End-to-end test through the app
-compare_modes.py         Model comparison checks
-uncertainty_analysis.py  Review-flag analysis
-app/streamlit_app.py     Earlier Streamlit prototype (uses older checkpoints; not part of the final system)
+backend_app.py             Flask server: /predict, /predict_batch, /generate_report, /api/stats
+ocuvision-concept.html     Web interface
+run_train.py               Train EfficientNet-B0 (final dataset)
+run_train_resnet50.py      Train ResNet50 (final dataset)
+run_eval.py                Evaluate EfficientNet-B0 (test and validation sets)
+run_eval_resnet50.py       Evaluate ResNet50
+run_cost_weighted_evaluation.py   Cost-weighted evaluation
+run_calibration_analysis.py       Reliability diagrams and ECE
+run_disagreement_gallery.py       Where the two models disagree, with Grad-CAM
+pipeline_check.py          End-to-end test through the app
+compare_modes.py           Deterministic vs MC Dropout, agreement statistics
+uncertainty_analysis.py    Review-flag analysis
+dataset_stats.py           Dataset composition from manifest.csv
+build_final_dataset.py     Builds data/cataract_final (SHA-256 de-duplication, seed 42)
+check_external_images.py   Runs a folder of external images through the running app
 src/
-  data_loader.py         Datasets, transforms (224x224, ImageNet normalisation), class names
-  models.py              ResNet50 / EfficientNet-B0 via timm, with a Dropout classifier head
-  train.py               Training loop
-  evaluate.py            Metrics: report, confusion matrix, ROC-AUC
-  gradcam.py             Grad-CAM heatmaps
-  uncertainty.py         MC Dropout
+  data_loader.py           Datasets, transforms (224x224, ImageNet normalisation), class names
+  models.py                ResNet50 / EfficientNet-B0 via timm, with a Dropout classifier head
+  train.py                 Training loop (Adam, weighted cross-entropy, cosine annealing)
+  evaluate.py              Metrics: report, confusion matrix, ROC-AUC
+  gradcam.py               Grad-CAM heatmaps
+  uncertainty.py           MC Dropout
+scripts/archive/           One-off dataset-building and earlier experiment scripts
+app/streamlit_app.py       Earlier Streamlit prototype (older checkpoints; not part of the final system)
+docs/images/               Screenshots
 ```
 
 ## Limitations
