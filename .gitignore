@@ -83,3 +83,15 @@ Thumbs.db
 cataract_balanced*
 report.pdf
 eval_results.txt
+
+scans.db
+external_dr/
+external_normal/
+*.bak
+ocuvision-concept.backup.html
+ocuvision_backup.html
+project_code.zip
+kaggle.json
+.env
+_rfmid_download/
+_odir_download/

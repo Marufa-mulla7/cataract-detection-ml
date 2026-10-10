@@ -1,3 +1,5 @@
+# Tested with: torch 2.13.0 (CPU), torchvision 0.28.0, timm 1.0.28, Python 3.11
+# Core (training, evaluation, Grad-CAM)
 torch>=2.1.0
 torchvision>=0.16.0
 timm>=0.9.12
@@ -9,7 +11,17 @@ opencv-python>=4.8.0
 pandas>=2.0.0
 numpy>=1.24.0
 Pillow>=10.0.0
-streamlit>=1.30.0
-fpdf2>=2.7.0
-kaggle>=1.6.0
-jupyter>=1.0.0
+
+# OcuVision web app (backend_app.py)
+flask>=3.0.0
+reportlab>=4.0.0
+requests>=2.31.0   # check_external_images.py
+
+# Optional - only if you still use them
+# streamlit>=1.30.0
+# fpdf2>=2.7.0
+# kaggle>=1.6.0
+# jupyter>=1.0.0
+
+# For the final submission, replace the ">=" lines with exact versions:
+#   pip freeze > requirements-lock.txt

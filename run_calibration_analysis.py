@@ -27,9 +27,9 @@ from src.data_loader import get_dataloaders, CLASS_NAMES
 from src.evaluate import get_predictions
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-DATA_ROOT = os.path.join(PROJECT_ROOT, "data", "cataract")
-EFFNET_PATH = os.path.join(PROJECT_ROOT, "models", "best_model_5class.pt")
-RESNET_PATH = os.path.join(PROJECT_ROOT, "models", "best_resnet50_5class.pt")
+DATA_ROOT = os.path.join(PROJECT_ROOT, "data", "cataract_final")
+EFFNET_PATH = os.path.join(PROJECT_ROOT, "models", "best_efficientnet_b0_5class_final.pt")
+RESNET_PATH = os.path.join(PROJECT_ROOT, "models", "best_resnet50_5class_final.pt")
 
 N_BINS = 10  # confidence buckets: 0.0-0.1, 0.1-0.2, ..., 0.9-1.0
 
@@ -78,6 +78,19 @@ def compute_calibration_per_class(labels, preds, probs, class_idx, n_bins=N_BINS
     }
 
 
+def expected_calibration_error(labels, preds, probs, n_bins=N_BINS):
+    """ECE on the top-class confidence: average gap between confidence and accuracy."""
+    conf = probs.max(axis=1)
+    correct = (preds == labels).astype(np.float32)
+    edges = np.linspace(0, 1, n_bins + 1)
+    ece = 0.0
+    for i in range(n_bins):
+        m = (conf > edges[i]) & (conf <= edges[i + 1])
+        if m.any():
+            ece += m.mean() * abs(correct[m].mean() - conf[m].mean())
+    return float(ece)
+
+
 def plot_reliability_diagram(labels, preds, probs, model_name, save_path):
     fig, axes = plt.subplots(1, len(CLASS_NAMES), figsize=(4 * len(CLASS_NAMES), 4.2), sharey=True)
 
@@ -100,7 +113,7 @@ def plot_reliability_diagram(labels, preds, probs, model_name, save_path):
 
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-        ax.set_title(class_name.replace("_", " ").title(), fontsize=11)
+        ax.set_title("AMD" if class_name == "amd" else class_name.replace("_", " ").title(), fontsize=11)
         ax.set_xlabel("Predicted confidence")
 
     axes[0].set_ylabel("Actual accuracy")
@@ -128,6 +141,8 @@ def main():
         os.path.join(PROJECT_ROOT, "reliability_diagram_effnet.png"),
     )
 
+    print(f"ECE (EfficientNet-B0, test): {expected_calibration_error(labels, effnet_preds, effnet_probs):.4f}")
+
     print("\nLoading ResNet50...")
     resnet = load_model("resnet50", RESNET_PATH, device)
     print("Running ResNet50 on test set...")
@@ -137,6 +152,7 @@ def main():
         os.path.join(PROJECT_ROOT, "reliability_diagram_resnet50.png"),
     )
 
+    print(f"ECE (ResNet50, test): {expected_calibration_error(labels, resnet_preds, resnet_probs):.4f}")
     print("\nDone. Both reliability diagrams saved to project root.")
 
 

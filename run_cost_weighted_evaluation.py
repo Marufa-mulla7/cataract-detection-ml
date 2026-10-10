@@ -34,10 +34,10 @@ from src.data_loader import get_dataloaders, CLASS_NAMES
 from src.evaluate import get_predictions
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-DATA_ROOT = os.path.join(PROJECT_ROOT, "data", "cataract")
+DATA_ROOT = os.path.join(PROJECT_ROOT, "data", "cataract_final")
 
 # Primary model (ResNet50, current best performer post-augmentation-fix)
-MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "best_resnet50_5class.pt")
+MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "best_resnet50_5class_final.pt")
 MODEL_KEY = "resnet50"
 
 NORMAL_IDX = CLASS_NAMES.index("normal")
