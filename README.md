@@ -67,8 +67,8 @@ sources only and are not independent patient cases.
 ## Setup (Windows)
 
 ```bash
-git clone https://github.com/Marufa-mulla7/cataract-detection-ml.git
-cd cataract-detection-ml
+git clone https://github.com/Marufa-mulla7/eye-anomaly-detection.git
+cd eye-anomaly-detection
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
