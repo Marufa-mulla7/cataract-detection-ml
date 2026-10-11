@@ -26,6 +26,11 @@ _*_download/
 *.zip
 
 cataract_balanced/
+cataract_balanced*
+
+# External test images (not redistributed)
+external_dr/
+external_normal/
 
 # ==============================
 # Trained model weights
@@ -43,33 +48,41 @@ dist/
 *.spec
 
 # ==============================
-# Generated galleries
+# Local app data (scan log; results only)
 # ==============================
-disagreement_gallery/
-failure_gallery/
+scans.db
+*.db
 
 # ==============================
-# Temporary / generated outputs
+# Generated galleries and outputs
 # ==============================
+disagreement_gallery/
+disagreement_gallery_final/
+failure_gallery/
+
 *_output.txt
 *_output_v2.txt
 *_final_output.txt
+eval_results.txt
+report.pdf
 
 # ==============================
-# Generated images / plots
+# Images: ignore generated plots, keep documentation screenshots
 # ==============================
 *.png
 *.jpg
 *.jpeg
-
-# Keep important project documentation images if needed later:
-# !docs/images/*.png
+!docs/images/
+!docs/images/*.png
+!docs/images/*.jpg
 
 # ==============================
 # Backups / temporary files
 # ==============================
 *.bak
 *.tmp
+*.backup.html
+ocuvision_backup.html
 uploaded_temp.jpg
 
 # ==============================
@@ -79,19 +92,3 @@ uploaded_temp.jpg
 Thumbs.db
 .vscode/
 .idea/
-
-cataract_balanced*
-report.pdf
-eval_results.txt
-
-scans.db
-external_dr/
-external_normal/
-*.bak
-ocuvision-concept.backup.html
-ocuvision_backup.html
-project_code.zip
-kaggle.json
-.env
-_rfmid_download/
-_odir_download/

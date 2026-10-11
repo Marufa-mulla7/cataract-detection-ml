@@ -18,6 +18,20 @@ and every result must be reviewed by a qualified eye-care professional.
   stored, never the uploaded images.
 - **Review flag:** a result is flagged when the two models disagree or the MC Dropout spread is high.
 
+## Screenshots
+
+| Result | Second opinion | Heatmap |
+|---|---|---|
+| ![Result](docs/images/02_result.png) | ![Second opinion](docs/images/03_second_opinion.png) | ![Heatmap](docs/images/04_heatmap.png) |
+
+| Batch analysis | PDF report page | Dashboard |
+|---|---|---|
+| ![Batch analysis](docs/images/06_batch.png) | ![Report page](docs/images/05_report.png) | ![Dashboard](docs/images/01_dashboard.png) |
+
+**Flagged case:** ResNet50 predicted Normal for a Cataract test image, EfficientNet-B0 disagreed, and the app flagged the result for review.
+
+![Flagged case](docs/images/07_flagged_case.png)
+
 ## Results (final held-out test set, 583 real images)
 
 | Model | Test accuracy | Macro F1 |
